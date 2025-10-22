@@ -8,8 +8,10 @@ import { ModalCompareProvider } from '@/context/ModalCompareContext'
 import { ModalSearchProvider } from '@/context/ModalSearchContext'
 import { ModalQuickviewProvider } from '@/context/ModalQuickviewContext'
 import ReactQueryProvider from '@/provider/react-query'
+import { SessionProvider } from 'next-auth/react'
 const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
+        <SessionProvider>
         <ReactQueryProvider>
         <CartProvider>
             <ModalCartProvider>
@@ -29,6 +31,7 @@ const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
             </ModalCartProvider>
         </CartProvider>
         </ReactQueryProvider>
+        </SessionProvider>
     )
 }
 

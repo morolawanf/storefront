@@ -14,6 +14,7 @@ import { useModalWishlistContext } from '@/context/ModalWishlistContext';
 import { useModalSearchContext } from '@/context/ModalSearchContext';
 import { useCart } from '@/context/CartContext';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 interface Props {
     props: string;
@@ -30,7 +31,7 @@ const MenuOne: React.FC<Props> = ({ props }) => {
     const { cartState } = useCart()
     const { openModalWishlist } = useModalWishlistContext()
     const { openModalSearch } = useModalSearchContext()
-
+    const {data: session} = useSession();
     const handleOpenSubNavMobile = (index: number) => {
         setOpenSubNavMobile(openSubNavMobile === index ? null : index)
     }

@@ -1,30 +1,39 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
+import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse, AxiosError, AxiosRequestConfig } from "axios";
 import { getSession } from "next-auth/react";
 
+export interface ApiResponse<T = undefined> {
+  message: string;
+  data: T | null;
+
+}
+
+export interface ApiResponseWithMeta<T = undefined, M = undefined> {
+  message: string;
+  data: T | null;
+  meta?: M;
+}
+
 // Create axios instance with base configuration
-export const apiClient: AxiosInstance = axios.create({
+export const baseApiClient: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  timeout: 30000, // 30 seconds
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
+  validateStatus: (status) => status >= 200 && status < 400,
 });
 
 // Request interceptor - Add auth token and request ID
-apiClient.interceptors.request.use(
+baseApiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    // Get session from NextAuth
     const session = await getSession();
 
-    // Add authorization token if available
     if (session?.user?.token) {
       config.headers.Authorization = `Bearer ${session.user.token}`;
     }
 
-    // Add request ID for tracking (useful for debugging)
     config.headers["X-Request-ID"] = crypto.randomUUID();
 
-    // Log request in development
     if (process.env.NODE_ENV === "development") {
       console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
         params: config.params,
@@ -41,9 +50,8 @@ apiClient.interceptors.request.use(
 );
 
 // Response interceptor - Handle errors globally
-apiClient.interceptors.response.use(
+baseApiClient.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Log response in development
     if (process.env.NODE_ENV === "development") {
       console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, {
         status: response.status,
@@ -56,7 +64,6 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Log error in development
     if (process.env.NODE_ENV === "development") {
       console.error("[API Response Error]", {
         url: error.config?.url,
@@ -66,18 +73,14 @@ apiClient.interceptors.response.use(
       });
     }
 
-    // Handle 401 Unauthorized - Token expired or invalid
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // In a production app, you might refresh the token here
-        // For now, we'll just redirect to login
         if (typeof window !== "undefined") {
           const currentPath = window.location.pathname;
-          // Don't redirect if already on login/register pages
           if (currentPath !== "/login" && currentPath !== "/register") {
-            window.location.href = `/login?callbackUrl=${encodeURIComponent(currentPath)}`;
+            // window.location.href = `/login?callbackUrl=${encodeURIComponent(currentPath)}`;
           }
         }
       } catch (refreshError) {
@@ -86,30 +89,22 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // Handle 403 Forbidden
     if (error.response?.status === 403) {
       console.error("Access forbidden:", error.response.data);
-      // You could redirect to an unauthorized page here
     }
 
-    // Handle 404 Not Found
     if (error.response?.status === 404) {
       console.error("Resource not found:", error.config?.url);
     }
 
-    // Handle 500 Internal Server Error
     if (error.response?.status === 500) {
       console.error("Server error:", error.response.data);
-      // You could show a global error notification here
     }
 
-    // Handle network errors (no response from server)
     if (!error.response) {
       console.error("Network error - server unreachable:", error.message);
-      // You could show a "Check your internet connection" message here
     }
 
-    // Handle timeout errors
     if (error.code === "ECONNABORTED") {
       console.error("Request timeout:", error.config?.url);
     }
@@ -118,25 +113,126 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Helper function to handle API errors consistently
+// Custom AxiosResponse that remaps response.data to the nested data property
+export interface TypedAxiosResponse<T = undefined> extends Omit<AxiosResponse, 'data'> {
+  data: T | null;  // This is the nested data.data from backend
+  message: string; // Hoisted from response.data.message
+  code: number;    // Hoisted from response.data.code
+}
+
+export interface TypedAxiosResponseWithMeta<T = undefined, M = undefined> extends Omit<AxiosResponse, 'data'> {
+  data: T | null;
+  message: string;
+
+  meta?: M;
+}
+
+// Custom Typed API client with automatic data unwrapping
+export interface ApiClient {
+  get<T = undefined>(url: string, config?: AxiosRequestConfig): Promise<TypedAxiosResponse<T>>;
+  getWithMeta<T = undefined, M = undefined>(url: string, config?: AxiosRequestConfig): Promise<TypedAxiosResponseWithMeta<T, M>>;
+  post<T = undefined>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<TypedAxiosResponse<T>>;
+  put<T = undefined>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<TypedAxiosResponse<T>>;
+  patch<T = undefined>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<TypedAxiosResponse<T>>;
+  delete<T = undefined>(url: string, config?: AxiosRequestConfig): Promise<TypedAxiosResponse<T>>;
+}
+
+export const apiClient: ApiClient = {
+  get: async <T = undefined>(url: string, config?: AxiosRequestConfig): Promise<TypedAxiosResponse<T>> => {
+    const response = await baseApiClient.get<ApiResponse<T>>(url, config);
+    
+    // Remap: response.data.data → response.data
+    return {
+      ...response,
+      data: response.data.data,
+      message: response.data.message,
+    } as TypedAxiosResponse<T>;
+  },
+
+  getWithMeta: async <T = undefined, M = undefined>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<TypedAxiosResponseWithMeta<T, M>> => {
+    const response = await baseApiClient.get<ApiResponseWithMeta<T, M>>(url, config);
+    
+    return {
+      ...response,
+      data: response.data.data,
+      message: response.data.message,
+      meta: response.data.meta,
+    } as TypedAxiosResponseWithMeta<T, M>;
+  },
+
+  post: async <T = undefined>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<TypedAxiosResponse<T>> => {
+    const response = await baseApiClient.post<ApiResponse<T>>(url, data, config);
+    
+    return {
+      ...response,
+      data: response.data.data,
+      message: response.data.message,
+    } as TypedAxiosResponse<T>;
+  },
+
+  put: async <T = undefined>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<TypedAxiosResponse<T>> => {
+    const response = await baseApiClient.put<ApiResponse<T>>(url, data, config);
+    
+    return {
+      ...response,
+      data: response.data.data,
+      message: response.data.message,
+    } as TypedAxiosResponse<T>;
+  },
+
+  patch: async <T = undefined>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<TypedAxiosResponse<T>> => {
+    const response = await baseApiClient.patch<ApiResponse<T>>(url, data, config);
+    
+    return {
+      ...response,
+      data: response.data.data,
+      message: response.data.message,
+    } as TypedAxiosResponse<T>;
+  },
+
+  delete: async <T = undefined>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<TypedAxiosResponse<T>> => {
+    const response = await baseApiClient.delete<ApiResponse<T>>(url, config);
+    
+    return {
+      ...response,
+      data: response.data.data,
+      message: response.data.message,
+    } as TypedAxiosResponse<T>;
+  },
+};
+
 export const handleApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
-    // Server responded with error
     if (error.response?.data?.message) {
       return error.response.data.message;
     }
 
-    // Network error
     if (!error.response) {
       return "Network error. Please check your internet connection.";
     }
 
-    // Timeout error
     if (error.code === "ECONNABORTED") {
       return "Request timeout. Please try again.";
     }
 
-    // Generic error based on status code
     switch (error.response?.status) {
       case 400:
         return "Invalid request. Please check your input.";
@@ -146,6 +242,8 @@ export const handleApiError = (error: unknown): string => {
         return "Access forbidden. You don't have permission.";
       case 404:
         return "Resource not found.";
+      case 429:
+        return "Too many requests. Please try again later.";
       case 500:
         return "Server error. Please try again later.";
       default:
@@ -153,7 +251,6 @@ export const handleApiError = (error: unknown): string => {
     }
   }
 
-  // Non-axios error
   if (error instanceof Error) {
     return error.message;
   }

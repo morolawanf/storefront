@@ -11,6 +11,7 @@ import * as Icon from "@phosphor-icons/react/dist/ssr";
 import { GetCountries } from "react-country-state-city";
 import { Country } from "react-country-state-city/dist/esm/types";
 import { FieldInfo } from "@/components/Form/FieldInfo";
+import { signIn, signOut } from "next-auth/react";
 
 export default function RegisterForm() {
   const [countriesList, setCountriesList] = useState<Country[]>([]);
@@ -42,58 +43,33 @@ export default function RegisterForm() {
         // Remove confirmPassword and agreeToTerms before sending to API
         const { confirmPassword, agreeToTerms, ...dataToSend } = value;
 
-        // Make API call
+        // Step 1: Register the user
         await apiClient.post(api.auth.register, dataToSend);
 
-        // Success - redirect to login
-        router.push("/login?registered=true");
+        // Step 2: Auto-login with credentials
+        const loginResult = await signIn("credentials", {
+          email: value.email,
+          password: value.password,
+          redirect: false,
+        });
+
+        // Step 3: Check login result
+        if (loginResult?.ok) {
+          // Success - redirect to OTP verification
+          router.push("/verify-otp");
+        } else {
+          // Login failed - sign out and show error
+          await signOut({ redirect: false });
+          setSubmitError("Registration successful but login failed. Please try logging in manually.");
+        }
       } catch (error) {
         // Log all error details for debugging
         console.error("Registration error:", error);
 
-        // If error is AxiosError, log response data if available
-        if (error && typeof error === "object" && "response" in error) {
-          // @ts-expect-error: dynamic error shape
-          console.error("API error response:", error.response?.data);
-          // @ts-expect-error: dynamic error shape
-          console.error("API error status:", error.response?.status);
-          // @ts-expect-error: dynamic error shape
-          console.error("API error headers:", error.response?.headers);
-        }
-
         const errorMessage = handleApiError(error);
         setSubmitError(errorMessage);
       }
-
-      // try {
-      //   // Remove confirmPassword and agreeToTerms before sending to API
-      //   const { confirmPassword, agreeToTerms, ...dataToSend } = value;
-
-      //   // Make API call
-      //   await apiClient.post(api.auth.register, dataToSend);
-
-      //   // Success - redirect to login
-      //   router.push("/login?registered=true");
-      // } catch (error) {
-      //   // Handle errors
-      //   const errorMessage = handleApiError(error);
-      //   setSubmitError(errorMessage);
-      //   console.error("Registration error:", error);
-      // }
-    },
-      onSubmitInvalid: ({ value, formApi }) => {
-    // This fires when validation fails
-    console.log("❌ Form validation failed!");
-    console.log("Form values:", value);
-    console.log("All field errors:", formApi.state.errors);
-    
-    // Log individual field errors
-    Object.entries(formApi.state.fieldMeta).forEach(([fieldName, meta]) => {
-      if (meta.errors.length > 0) {
-        console.error(`Field "${fieldName}" errors:`, meta.errors);
-      }
-    });
-  },
+    }
   });
 
   return (
@@ -302,24 +278,30 @@ export default function RegisterForm() {
 
       {/* Error Message */}
       {submitError && (
-        <div className="rounded-md bg-red-50 p-4 mt-5">
+        <div className="text-red p-1 mt-2 text-center">
           <p className="text-sm text-red-800">{submitError}</p>
         </div>
       )}
 
       {/* Submit Button */}
-      <div className="block-button md:mt-7 mt-4">
+      <div className="block-button mt-4">
         <form.Subscribe
           selector={(state) => [state.canSubmit, state.isSubmitting]}
           children={([canSubmit, isSubmitting]) => (
             <button 
               type="submit" 
               disabled={!canSubmit || isSubmitting} 
-              className="button-main w-full disabled:opacity-50 disabled:cursor-not-allowed">
+              className="button-main w-full py-4 disabled:opacity-50 disabled:cursor-not-allowed">
               {isSubmitting ? "Registering..." : "Register"}
             </button>
           )}
         />
+      </div>
+      <div className="mt-2 text-center text-sm text-secondary2">
+        Already have an account?{" "}
+        <Link href="/login" className="text-black hover:underline">
+          Login
+        </Link>
       </div>
     </form>
   );

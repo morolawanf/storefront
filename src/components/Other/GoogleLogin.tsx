@@ -11,10 +11,10 @@ const GoogleLogin = () => {
     <form action={dispatchGoogle}>
       <button
         aria-label="Sign in with Google"
-        className="button-main w-full flex items-center justify-center gap-2 text-black border border-line"
+        className="button-main bg-transparent w-full flex items-center justify-center gap-2 text-black border border-gray-300"
         type="submit"
       >
-        Signup with google
+        Continue with Google
         <FcGoogle size={20} />
       </button>
       {errorMsgGoogle && (

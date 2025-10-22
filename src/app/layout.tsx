@@ -9,6 +9,7 @@ import ModalQuickview from "@/components/Modal/ModalQuickview";
 import ModalCompare from "@/components/Modal/ModalCompare";
 import CountdownTimeType from "@/type/CountdownType";
 import { countdownTime } from "@/store/countdownTime";
+import NextTopLoader from "nextjs-toploader";
 
 const serverTimeLeft: CountdownTimeType = countdownTime();
 
@@ -24,6 +25,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <GlobalProvider>
       <html lang="en">
         <body className={instrument.className}>
+                    <NextTopLoader
+            color="#e9f7ff"
+            initialPosition={0.08}
+            crawlSpeed={200}
+            height={3}
+            crawl={true}
+            showSpinner={false}
+            easing="ease"
+            speed={200}
+          />
           {children}
           <ModalCart serverTimeLeft={serverTimeLeft} />
           <ModalWishlist />

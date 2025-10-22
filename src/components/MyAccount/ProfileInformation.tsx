@@ -1,0 +1,294 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
+import * as Icon from '@phosphor-icons/react/dist/ssr';
+import { useForm } from '@tanstack/react-form';
+import { z } from 'zod';
+import { GetCountries } from 'react-country-state-city';
+import { Country } from 'react-country-state-city/dist/esm/types';
+import { useUserProfile } from '@/hooks/queries/useUserProfile';
+import { useUpdateProfile, UpdateProfileInput } from '@/hooks/mutations/useUpdateProfile';
+import { FieldInfo } from '@/components/Form/FieldInfo';
+
+// Zod schema for profile update validation
+const profileUpdateSchema = z.object({
+  firstName: z.string().min(2, 'First name must be at least 2 characters'),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
+  country: z.string().min(1, 'Please select a country'),
+  dob: z.string().optional(),
+  notifications: z.boolean().optional(),
+});
+
+export default function ProfileInformation() {
+  const [countriesList, setCountriesList] = useState<Country[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { data: userProfile, isLoading } = useUserProfile();
+  const updateProfileMutation = useUpdateProfile();
+
+  // Load countries list
+  useEffect(() => {
+    GetCountries().then((result) => {
+      setCountriesList(result);
+    });
+  }, []);
+
+  const form = useForm({
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      country: '',
+      dob: '',
+      notifications: true,
+    },
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = profileUpdateSchema.safeParse(value);
+        if (!result.success) {
+          return result.error.flatten().fieldErrors;
+        }
+        return undefined;
+      },
+    },
+    onSubmit: async ({ value }) => {
+      setSuccessMessage(null);
+      setErrorMessage(null);
+
+      try {
+        await updateProfileMutation.mutateAsync(value as UpdateProfileInput);
+        setSuccessMessage('Profile updated successfully!');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccessMessage(null);
+        }, 3000);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to update profile';
+        setErrorMessage(message);
+      }
+    },
+  });
+
+  // Update form values when user profile loads
+  useEffect(() => {
+    if (userProfile) {
+      form.setFieldValue('firstName', userProfile.firstName || '');
+      form.setFieldValue('lastName', userProfile.lastName || '');
+      form.setFieldValue('country', userProfile.country || '');
+      form.setFieldValue('dob', userProfile.dob || '');
+      form.setFieldValue('notifications', userProfile.notifications ?? true);
+    }
+  }, [userProfile]);
+
+  if (isLoading) {
+    return (
+      <div className="tab text-content w-full p-7 border border-line rounded-xl">
+        <div className="heading5 pb-4">Information</div>
+        <p className="text-secondary">Loading profile...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="tab text-content w-full p-7 border border-line rounded-xl">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+      >
+        <div className="heading5 pb-4">Information</div>
+
+        {/* Avatar Upload */}
+        <div className="upload_image col-span-full">
+          <label htmlFor="uploadImage">
+            Upload Avatar: <span className="text-red">*</span>
+          </label>
+          <div className="flex flex-wrap items-center gap-5 mt-3">
+            <div className="bg_img flex-shrink-0 relative w-[7.5rem] h-[7.5rem] rounded-lg overflow-hidden bg-surface">
+              <span className="ph ph-image text-5xl absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-secondary"></span>
+              <Image
+                src={userProfile?.image || '/images/avatar/1.png'}
+                width={300}
+                height={300}
+                alt="avatar"
+                className="upload_img relative z-[1] w-full h-full object-cover"
+              />
+            </div>
+            <div>
+              <strong className="text-button">Upload File:</strong>
+              <p className="caption1 text-secondary mt-1">JPG 120x120px</p>
+              <div className="upload_file flex items-center gap-3 w-[220px] mt-3 px-3 py-2 border border-line rounded">
+                <label
+                  htmlFor="uploadImage"
+                  className="caption2 py-1 px-3 rounded bg-line whitespace-nowrap cursor-pointer"
+                >
+                  Choose File
+                </label>
+                <input
+                  type="file"
+                  name="uploadImage"
+                  id="uploadImage"
+                  accept="image/*"
+                  className="caption2 cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Form Fields */}
+        <div className="grid sm:grid-cols-2 gap-4 gap-y-5 mt-5">
+          {/* First Name */}
+          <form.Field
+            name="firstName"
+            children={(field) => {
+              const hasError = field.state.meta.isTouched && !field.state.meta.isValid;
+
+              return (
+                <div className="first-name">
+                  <label htmlFor="firstName" className="caption1 capitalize">
+                    First Name <span className="text-red">*</span>
+                  </label>
+                  <input
+                    className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
+                      hasError ? 'border-red-600' : ''
+                    }`}
+                    id="firstName"
+                    type="text"
+                    placeholder="First name"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  />
+                  <FieldInfo field={field} />
+                </div>
+              );
+            }}
+          />
+
+          {/* Last Name */}
+          <form.Field
+            name="lastName"
+            children={(field) => {
+              const hasError = field.state.meta.isTouched && !field.state.meta.isValid;
+
+              return (
+                <div className="last-name">
+                  <label htmlFor="lastName" className="caption1 capitalize">
+                    Last Name <span className="text-red">*</span>
+                  </label>
+                  <input
+                    className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
+                      hasError ? 'border-red-600' : ''
+                    }`}
+                    id="lastName"
+                    type="text"
+                    placeholder="Last name"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  />
+                  <FieldInfo field={field} />
+                </div>
+              );
+            }}
+          />
+
+          {/* Country */}
+          <form.Field
+            name="country"
+            children={(field) => {
+              const hasError = field.state.meta.isTouched && !field.state.meta.isValid;
+
+              return (
+                <div className="country">
+                  <label htmlFor="country" className="caption1 capitalize">
+                    Country <span className="text-red">*</span>
+                  </label>
+                  <div className="select-block mt-2">
+                    <select
+                      className={`border border-line px-4 py-3 w-full rounded-lg ${
+                        hasError ? 'border-red-600' : ''
+                      }`}
+                      id="country"
+                      name="country"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    >
+                      <option value="">Select Country</option>
+                      {countriesList.map((country) => (
+                        <option value={country.name} key={country.id}>
+                          {country.emoji} {country.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Icon.CaretDown className="arrow-down text-lg" />
+                  </div>
+                  <FieldInfo field={field} />
+                </div>
+              );
+            }}
+          />
+
+          {/* Date of Birth */}
+          <form.Field
+            name="dob"
+            children={(field) => {
+              return (
+                <div className="birth">
+                  <label htmlFor="birth" className="caption1">
+                    Day of Birth
+                  </label>
+                  <input
+                    className="border-line mt-2 px-4 py-3 w-full rounded-lg"
+                    id="birth"
+                    type="date"
+                    placeholder="Day of Birth"
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  />
+                  <FieldInfo field={field} />
+                </div>
+              );
+            }}
+          />
+        </div>
+
+        {/* Success/Error Messages */}
+        {successMessage && (
+          <div className="mt-5 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+            {successMessage}
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="mt-5 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            {errorMessage}
+          </div>
+        )}
+
+        {/* Submit Button */}
+        <div className="block-button mt-5">
+          <form.Subscribe
+            selector={(state) => [state.canSubmit, state.isSubmitting]}
+            children={([canSubmit, isSubmitting]) => (
+              <button
+                type="submit"
+                disabled={!canSubmit || isSubmitting}
+                className="button-main disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'Saving...' : 'Save Change'}
+              </button>
+            )}
+          />
+        </div>
+      </form>
+    </div>
+  );
+}

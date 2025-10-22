@@ -10,6 +10,13 @@ export const api = {
     refreshToken: "/auth/refresh",
     forgotPassword: "/auth/forgot-password",
     resetPassword: "/auth/reset-password",
+    verifyOtp: "/auth/verifyAccount",
+    resendOtp: "/auth/resendVerifyAccountOtp",
+    changePassword: "/auth/changePassword",
+    requestResetPasswordCode: "/auth/requestResetPasswordCode",
+    resetPasswordByCode: "/auth/resetPasswordByCode",
+    passwordAndProviderStatus: "/auth/passwordAndProviderStatus",
+    setPassword: "/auth/setPassword",
   },
 
   // Product endpoints
@@ -32,21 +39,27 @@ export const api = {
 
   // Order endpoints
   orders: {
-    list: "/orders",
-    byId: (id: string) => `/orders/${id}`,
-    create: "/orders/create",
-    cancel: (id: string) => `/orders/${id}/cancel`,
-    track: (trackingNumber: string) => `/orders/track/${trackingNumber}`,
+    list: "/myOrder/orders",
+    byId: (id: string) => `/myOrder/orders/${id}`,
+    create: "/myOrder/orders/create",
+    cancel: (id: string) => `/myOrder/orders/${id}/cancel`,
+    track: (trackingNumber: string) => `/myOrder/orders/track/${trackingNumber}`,
+    returns: "/myOrder/orders/returns",
+    initiateReturn: (id: string) => `/myOrder/orders/${id}/return`,
   },
 
   // User endpoints
   user: {
     profile: "/user/profile",
+    updateProfile: "/user/profile",
     orders: "/user/orders",
     wishlist: "/user/wishlist",
-    addresses: "/user/addresses",
-    updateProfile: "/user/profile/update",
     changePassword: "/user/password/change",
+    // Address endpoints
+    addresses: "/user/address/all",
+    addAddress: "/user/address",
+    updateAddress: (addressId: string) => `/user/address/${addressId}`,
+    deleteAddress: (addressId: string) => `/user/address/${addressId}`,
   },
 
   // Wishlist endpoints

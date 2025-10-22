@@ -171,6 +171,57 @@ const data: Product = await fetch(...);
 const data = productSchema.parse(await fetch(...));
 ```
 
+### 4. User Interactions & Confirmations
+
+**NEVER use browser dialogs** - they provide poor UX and are not customizable:
+
+```typescript
+// ❌ NEVER use these
+window.alert('Error occurred');
+window.confirm('Are you sure?');
+window.prompt('Enter value:');
+
+// ✅ ALWAYS use custom UI components
+import ConfirmModal from '@/components/Modal/ConfirmModal';
+
+// For confirmations (delete, destructive actions)
+const [showConfirm, setShowConfirm] = useState(false);
+<ConfirmModal
+  isOpen={showConfirm}
+  title="Delete Address"
+  message="Are you sure? This action cannot be undone."
+  variant="danger"
+  onConfirm={handleConfirm}
+  onCancel={() => setShowConfirm(false)}
+/>
+
+// For errors - use inline error banners
+{error && (
+  <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+    {error.message}
+  </div>
+)}
+
+// For success messages - use toast notifications or inline alerts
+{success && (
+  <div className="p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+    Operation completed successfully!
+  </div>
+)}
+```
+
+**ConfirmModal Variants**:
+- `danger` - Red, for delete/destructive actions
+- `warning` - Yellow, for caution/confirmation needed
+- `info` - Blue, for informational confirmations
+
+**Benefits**:
+- **Customizable**: Match app design system
+- **Accessible**: Proper ARIA attributes and keyboard navigation
+- **User-friendly**: Clear messaging with custom buttons
+- **Non-blocking**: Doesn't halt JavaScript execution
+- **Testable**: Can be tested programmatically
+
 ## API Integration
 
 ### Current Setup
@@ -273,7 +324,8 @@ Before submitting changes:
 6. ❌ DO NOT create components >350 lines
 7. ❌ DO NOT repeat code (follow DRY)
 8. ❌ DO NOT use magic numbers (define constants)
-9. ❌ DO NOT overcomplicate simple components (keep it simple) <use simple fetch, or even if you need to hoist, use normal functions as opposed too much react query>
+9. ❌ DO NOT use browser dialogs (`window.alert`, `window.confirm`, `window.prompt`) - use custom modals/inline UI
+10. ❌ DO NOT overcomplicate simple components (keep it simple) <use simple fetch, or even if you need to hoist, use normal functions as opposed too much react query>
 ## Migration Path (New Features Only)
 
 For **NEW** features, follow the modern patterns in `docs/ARCHITECTURE.md`:

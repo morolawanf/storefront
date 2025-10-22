@@ -1,10 +1,17 @@
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
-
+// import {use} from 'nextjs-toploader/app'
 const useLoginPopup = () => {
     const [openLoginPopup, setOpenLoginPopup] = useState(false)
-
+    const {data: session} = useSession();
+    const router = useRouter()
     const handleLoginPopup = () => {
-        setOpenLoginPopup((toggleOpen) => !toggleOpen)
+        if(session?.user){
+            router.push('/my-account')
+        }else{
+            setOpenLoginPopup((toggleOpen) => !toggleOpen)
+        }
     }
 
     // Check if the click event occurs outside the popup.
