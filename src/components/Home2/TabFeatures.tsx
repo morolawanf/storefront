@@ -39,7 +39,7 @@ const TabFeatures: React.FC<Props> = ({ data, start, limit }) => {
     }
 
     const filteredProducts = getFilterData()
-    
+
     return (
         <>
             <div className="tab-features-block md:pt-20 pt-10">
@@ -63,7 +63,7 @@ const TabFeatures: React.FC<Props> = ({ data, start, limit }) => {
                         </div>
                     </div>
 
-                    <div className="list-product hide-product-sold  grid lg:grid-cols-4 grid-cols-2 sm:gap-[30px] gap-[20px] md:mt-10 mt-6">
+                    <div className="list-product hide-product-sold  grid lg:grid-cols-5 grid-cols-2 sm:gap-[27px] gap-[20px] md:mt-10 mt-6">
                         {filteredProducts.slice(start, limit).map((prd, index) => (
                             <Product key={index} data={prd} type='grid' />
                         ))}

@@ -14,11 +14,26 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3009](http://localhost:3009) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+
+## Code Formatting
+
+This project uses **Prettier** for consistent code formatting. See [PRETTIER_SETUP.md](./PRETTIER_SETUP.md) for detailed information.
+
+**Quick Commands:**
+```bash
+# Format all files
+npm run format
+
+# Check formatting (CI)
+npm run format:check
+```
+
+**VS Code**: Install the recommended extensions when prompted, and files will auto-format on save.
 
 ## Learn More
 

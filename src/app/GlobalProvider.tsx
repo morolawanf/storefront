@@ -9,28 +9,31 @@ import { ModalSearchProvider } from '@/context/ModalSearchContext'
 import { ModalQuickviewProvider } from '@/context/ModalQuickviewContext'
 import ReactQueryProvider from '@/provider/react-query'
 import { SessionProvider } from 'next-auth/react'
+import ServerQueries from '@/provider/Server-queries'
 const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return (
         <SessionProvider>
-        <ReactQueryProvider>
-        <CartProvider>
-            <ModalCartProvider>
-                <WishlistProvider>
-                    <ModalWishlistProvider>
-                        <CompareProvider>
-                            <ModalCompareProvider>
-                                <ModalSearchProvider>
-                                    <ModalQuickviewProvider>
-                                        {children}
-                                    </ModalQuickviewProvider>
-                                </ModalSearchProvider>
-                            </ModalCompareProvider>
-                        </CompareProvider>
-                    </ModalWishlistProvider>
-                </WishlistProvider>
-            </ModalCartProvider>
-        </CartProvider>
-        </ReactQueryProvider>
+            <ReactQueryProvider>
+                <ServerQueries>
+                    <CartProvider>
+                        <ModalCartProvider>
+                            <WishlistProvider>
+                                <ModalWishlistProvider>
+                                    <CompareProvider>
+                                        <ModalCompareProvider>
+                                            <ModalSearchProvider>
+                                                <ModalQuickviewProvider>
+                                                    {children}
+                                                </ModalQuickviewProvider>
+                                            </ModalSearchProvider>
+                                        </ModalCompareProvider>
+                                    </CompareProvider>
+                                </ModalWishlistProvider>
+                            </WishlistProvider>
+                        </ModalCartProvider>
+                    </CartProvider>
+                </ServerQueries>
+            </ReactQueryProvider>
         </SessionProvider>
     )
 }

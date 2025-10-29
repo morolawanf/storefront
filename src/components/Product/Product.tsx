@@ -18,7 +18,7 @@ import Rate from '../Other/Rate'
 
 interface ProductProps {
     data: ProductType
-    type: string
+    type: 'grid' | 'list' | 'marketplace'
 }
 
 const Product: React.FC<ProductProps> = ({ data, type }) => {

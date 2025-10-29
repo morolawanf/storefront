@@ -25,8 +25,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <GlobalProvider>
       <html lang="en">
         <body className={instrument.className}>
-                    <NextTopLoader
-            color="#e9f7ff"
+          <NextTopLoader
+            color="#56ff2b"
             initialPosition={0.08}
             crawlSpeed={200}
             height={3}
