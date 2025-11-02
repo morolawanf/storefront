@@ -32,7 +32,7 @@ const Deal = () => {
                 <div className="heading flex items-center justify-between gap-5 flex-wrap">
                     <div className="left flex items-center gap-6 gap-y-3 flex-wrap">
                         <div className="heading3">Deals of the week</div>
-                        <div className="deal-time bg-red py-1 px-5 rounded-lg">
+                        <div className="deal-time bg-red py-1 px-2.5 sm:px-5 rounded-lg">
                             <div className="heading6 text-white">
                                 <span className='countdown-day'>{timeLeft.days < 10 ? `0${timeLeft.days}` : timeLeft.days}</span>
                                 <span>D : </span>

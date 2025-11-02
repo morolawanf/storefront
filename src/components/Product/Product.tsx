@@ -213,13 +213,21 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
         return shouldShowSaleProgress(data.sale);
     }, [data.sale]);
 
+    const isNewProduct = useMemo(() => {
+        if (saleInfo.hasActiveSale) return false;
+        const daysSinceCreation = - new Date() - new Date(data.createdAt).getTime() / (24 * 60 * 60 * 1000);
+        const isNew = daysSinceCreation <= 5;
+        return isNew;
+    }, [saleInfo.hasActiveSale, data.createdAt]);
+
+
     return (
         <>
             {type === "grid" ? (
                 <div className={`product-item grid-type ${colors.length > 0 ? 'has-colors' : ''}`}>
                     <div onClick={() => handleDetailProduct(data.id)} className="product-main cursor-pointer block">
                         <div className="product-thumb bg-white relative overflow-hidden rounded-2xl  outline outline-1 outline-line">
-                            {data.new && (
+                            {isNewProduct && (
                                 <div className="product-tag text-button-uppercase bg-green px-3 py-0.5 inline-block rounded-full absolute top-3 left-3 z-[1]">
                                     New
                                 </div>

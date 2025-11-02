@@ -32,7 +32,7 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ start, limit }) => {
     if (!showCountdown) return null;
 
     return (
-        <div className="deal-time bg-red py-1 px-5 rounded-lg">
+        <div className="deal-time bg-red py-1 px-2.5 sm:px-5 rounded-lg">
             <div className="heading6 text-white">
                 <span className='day'>{timeLeft.days}</span>
                 <span>D : </span>

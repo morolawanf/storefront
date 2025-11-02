@@ -25,7 +25,8 @@ export interface ProductType {
     images: Array<ProductDescriptionImage>,
     description: string,
     action: string,
-    slug: string
+    slug: string,
+    createdAt: string,
 
     ///new
     _id: string;
