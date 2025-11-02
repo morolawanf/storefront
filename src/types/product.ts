@@ -48,7 +48,6 @@ export interface ProductVariantChild {
   name: string;
   price?: number;
   stock: number;
-  colorCode?: string;
   pricingTiers?: ProductPricingTier[];
 }
 
@@ -194,7 +193,15 @@ export interface SearchProductParams {
   specValue?: string;
 }
 
-export type SortOption = 'alphabetical' | 'newest' | 'price_asc' | 'price_desc' | 'popular' | 'stock' | 'order_frequency' | 'rating';
+export type SortOption =
+  | 'alphabetical'
+  | 'newest'
+  | 'price_asc'
+  | 'price_desc'
+  | 'popular'
+  | 'stock'
+  | 'order_frequency'
+  | 'rating';
 
 export interface CategoryBySlugParams {
   slug: string;
@@ -203,7 +210,7 @@ export interface CategoryBySlugParams {
   /**
    * Array of sort options to apply in priority order.
    * Default: ['alphabetical', 'newest']
-   * 
+   *
    * @example ['price_asc', 'popular', 'alphabetical']
    * @example ['order_frequency', 'newest']
    */

@@ -8,6 +8,7 @@ export type BannerCategory = 'A' | 'B' | 'C' | 'D' | 'E';
 export interface ApiBanner {
   _id: string;
   name: string;
+  active: boolean;
   imageUrl: string;
   pageLink: string;
   headerText?: string;

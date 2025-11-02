@@ -1,22 +1,22 @@
-'use client'
+'use client';
 
-import React, { useEffect, useState, useMemo } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { ProductType } from '@/type/ProductType'
+import React, { useEffect, useState, useMemo } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { ProductType } from '@/type/ProductType';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
-import { useCart } from '@/context/CartContext'
-import { useModalCartContext } from '@/context/ModalCartContext'
-import { useWishlist } from '@/context/WishlistContext'
-import { useModalWishlistContext } from '@/context/ModalWishlistContext'
-import { useCompare } from '@/context/CompareContext'
-import { useModalCompareContext } from '@/context/ModalCompareContext'
-import { useModalQuickviewContext } from '@/context/ModalQuickviewContext'
-import { useRouter } from 'next/navigation'
-import Marquee from 'react-fast-marquee'
-import Rate from '../Other/Rate'
-import { getCdnUrl } from '@/libs/cdn-url'
-import Color from 'color'
+import { useCart } from '@/context/CartContext';
+import { useModalCartContext } from '@/context/ModalCartContext';
+import { useWishlist } from '@/context/WishlistContext';
+import { useModalWishlistContext } from '@/context/ModalWishlistContext';
+import { useCompare } from '@/context/CompareContext';
+import { useModalCompareContext } from '@/context/ModalCompareContext';
+import { useModalQuickviewContext } from '@/context/ModalQuickviewContext';
+import { useRouter } from 'next/navigation';
+import Marquee from 'react-fast-marquee';
+import Rate from '../Other/Rate';
+import { getCdnUrl } from '@/libs/cdn-url';
+import Color from 'color';
 import {
     calculateBestSale,
     formatPrice,
@@ -25,122 +25,126 @@ import {
     calculateSaleProgress,
     shouldShowSaleMarquee,
     shouldShowSaleProgress
-} from '@/utils/calculateSale'
+} from '@/utils/calculateSale';
+import { ProductVariant, ProductVariantChild } from '@/types/product';
+import { CheckCircleIcon } from '@phosphor-icons/react';
 
 interface ProductProps {
-    data: ProductType
-    type: 'grid' | 'list' | 'marketplace'
+    data: ProductType;
+    type: 'grid' | 'list' | 'marketplace';
 }
 
 const Product: React.FC<ProductProps> = ({ data, type }) => {
-    const [activeColor, setActiveColor] = useState<string>('')
-    const [activeSize, setActiveSize] = useState<string>('')
-    const [openQuickShop, setOpenQuickShop] = useState<boolean>(false)
+    const [activeColor, setActiveColor] = useState<string>('');
+    const [activeSize, setActiveSize] = useState<string>('');
+    const [openQuickShop, setOpenQuickShop] = useState<boolean>(false);
     const { addToCart, updateCart, cartState } = useCart();
-    const { openModalCart } = useModalCartContext()
+    const { openModalCart } = useModalCartContext();
     const { addToWishlist, removeFromWishlist, wishlistState } = useWishlist();
-    const { openModalWishlist } = useModalWishlistContext()
+    const { openModalWishlist } = useModalWishlistContext();
     const { addToCompare, removeFromCompare, compareState } = useCompare();
-    const { openModalCompare } = useModalCompareContext()
-    const { openQuickview } = useModalQuickviewContext()
-    const router = useRouter()
+    const { openModalCompare } = useModalCompareContext();
+    const { openQuickview } = useModalQuickviewContext();
+    const router = useRouter();
 
     // Narrow types for optional new fields without changing global ProductType
-    type AttrChild = { name: string; colorCode?: string }
-    type Attr = { name: string; children: AttrChild[] }
-    type WithAttributes = { attributes?: Attr[] }
-    type PackSize = { label: string; quantity: number; price?: number; enableAttributes?: boolean }
-    type WithPackSizes = { packSizes?: PackSize[] }
-
-    const hasAttributes = (obj: unknown): obj is WithAttributes =>
-        typeof obj === 'object' && obj !== null && 'attributes' in (obj as Record<string, unknown>)
-
-    const hasPackSizes = (obj: unknown): obj is WithPackSizes =>
-        typeof obj === 'object' && obj !== null && 'packSizes' in (obj as Record<string, unknown>)
+    type AttrChild = { name: string; colorCode?: string; };
+    type Attr = { name: string; children: AttrChild[]; };
+    type WithAttributes = { attributes?: Attr[]; };
+    type PackSize = { label: string; quantity: number; price?: number; enableAttributes?: boolean; };
+    type WithPackSizes = { packSizes?: PackSize[]; };
 
     const attributes: Attr[] = useMemo(() => {
+        const hasAttributes = (obj: unknown): obj is WithAttributes =>
+            typeof obj === 'object' && obj !== null && 'attributes' in (obj as Record<string, unknown>);
+
         return hasAttributes(data) && Array.isArray((data as WithAttributes).attributes)
-            ? ((data as WithAttributes).attributes as Attr[])
-            : []
-    }, [data])
+            ? ((data as WithAttributes).attributes as ProductVariant[])
+            : [];
+    }, [data]);
 
     const colors = useMemo(() => {
         const colorAttr = attributes.find(
             (a) => a.name.toLowerCase() === 'color' || a.name.toLowerCase() === 'colors'
-        )
-        if (!colorAttr) return [] as { label: string; hex: string; value: string }[]
+        );
+        if (!colorAttr) return [] as { label: string, hex: string, value: string; }[];
         return colorAttr.children.map((child) => {
-            let hex = child.colorCode
-            if (!hex) {
-                try {
-                    hex = Color(child.name).hex()
-                } catch {
-                    hex = '#000000'
-                }
-            }
-            return { label: child.name, hex, value: child.name }
-        })
-    }, [attributes])
+            let hex = child.name;
 
+            try {
+                // Try to parse the color and create a lighter version
+                const originalColor = Color(child.name.toLowerCase());
+                hex = originalColor.mix(Color('#ffffff'), 0.15).hex(); // Lighten by 30%
+            } catch {
+                // If color parsing fails, use a default light gray
+                hex = '#E5E5E5';
+            }
+
+            return { label: child.name, hex, value: child.name };
+        }).splice(0, 6);
+    }, [attributes]);
     const sizes = useMemo(() => {
         const sizeAttr = attributes.find(
             (a) => a.name.toLowerCase() === 'size' || a.name.toLowerCase() === 'sizes'
-        )
-        return sizeAttr ? sizeAttr.children.map((c) => c.name) : []
-    }, [attributes])
+        );
+        return sizeAttr ? sizeAttr.children.map((c) => c.name) : [];
+    }, [attributes]);
 
     // Check if there are non-color attributes (to determine quick shop vs add to cart)
     const hasNonColorAttributes = useMemo(() => {
         return attributes.some(
             (a) => a.name.toLowerCase() !== 'color' && a.name.toLowerCase() !== 'colors'
-        )
-    }, [attributes])
+        );
+    }, [attributes]);
 
     const packSizes: PackSize[] = useMemo(() => {
+        const hasPackSizes = (obj: unknown): obj is WithPackSizes =>
+            typeof obj === 'object' && obj !== null && 'packSizes' in (obj as Record<string, unknown>);
+
         return hasPackSizes(data) && Array.isArray((data as WithPackSizes).packSizes)
             ? ((data as WithPackSizes).packSizes as PackSize[])
-            : []
-    }, [data])
+            : [];
+    }, [data]);
 
     const singlePack = useMemo(() => {
-        return packSizes.find((p) => p.label?.toLowerCase() === 'single')
-    }, [packSizes])
+        return packSizes.find((p) => p.label?.toLowerCase() === 'single');
+    }, [packSizes]);
 
     // Initialize defaults for color/size when available
     useEffect(() => {
         if (!activeColor && colors.length > 0) {
-            setActiveColor(colors[0].label)
+            setActiveColor(colors[0].label);
         }
         if (!activeSize && sizes.length > 0) {
-            setActiveSize(sizes[0])
+            setActiveSize(sizes[0]);
         }
-    }, [colors, sizes, activeColor, activeSize])
+    }, [colors, sizes, activeColor, activeSize]);
 
     const handleActiveColor = (item: string) => {
-        setActiveColor(item)
-    }
+        setActiveColor(item);
+    };
 
     const handleActiveSize = (item: string) => {
-        setActiveSize(item)
-    }
+        setActiveSize(item);
+    };
 
     const handleAddToCart = () => {
         // If product has pack sizes, only allow quick add when a "Single" pack exists
         if (packSizes.length > 0 && !singlePack) {
             // Redirect to PDP for selection if Single pack doesn't exist
-            handleDetailProduct(data.id)
-            return
+            handleDetailProduct(data.id);
+            return;
         }
 
-        const qty = singlePack?.quantity ?? data.quantityPurchase
+        const qty = singlePack?.quantity ?? data.quantityPurchase;
 
         if (!cartState.cartArray.find(item => item.id === data.id)) {
             addToCart({ ...data });
-            updateCart(data.id, qty, activeSize, activeColor)
+            updateCart(data.id, qty, activeSize, activeColor);
         } else {
-            updateCart(data.id, qty, activeSize, activeColor)
+            updateCart(data.id, qty, activeSize, activeColor);
         }
-        openModalCart()
+        openModalCart();
     };
 
     const handleAddToWishlist = () => {
@@ -164,15 +168,15 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                 addToCompare(data);
             }
         } else {
-            alert('Compare up to 3 products')
+            alert('Compare up to 3 products');
         }
 
         openModalCompare();
     };
 
     const handleQuickviewOpen = () => {
-        openQuickview(data)
-    }
+        openQuickview(data);
+    };
 
     const handleDetailProduct = (productId: string) => {
         // redirect to shop with category selected
@@ -197,7 +201,7 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
     // Calculate sold percentage based on maxBuys and boughtCount
     const percentSold = useMemo(() => {
         return calculateSaleProgress(data.sale);
-    }, [data.sale])
+    }, [data.sale]);
 
     // Check if should show sale marquee (isHot = true and not sold out)
     const showSaleMarquee = useMemo(() => {
@@ -229,8 +233,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                 <div
                                     className={`add-wishlist-btn w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative ${wishlistState.wishlistArray.some(item => item.id === data.id) ? 'active' : ''}`}
                                     onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleAddToWishlist()
+                                        e.stopPropagation();
+                                        handleAddToWishlist();
                                     }}
                                 >
                                     <div className="tag-action bg-black text-white caption2 px-1.5 py-0.5 rounded-sm">Add To Wishlist</div>
@@ -247,8 +251,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                 <div
                                     className={`compare-btn w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative mt-2 ${compareState.compareArray.some(item => item.id === data.id) ? 'active' : ''}`}
                                     onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleAddToCompare()
+                                        e.stopPropagation();
+                                        handleAddToCompare();
                                     }}
                                 >
                                     <div className="tag-action bg-black text-white caption2 px-1.5 py-0.5 rounded-sm">Compare Product</div>
@@ -304,22 +308,22 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                     </Marquee>
                                 </>
                             )}
-                            <div className="list-action grid grid-cols-2 gap-3 px-5 absolute w-full bottom-5 max-lg:hidden">
+                            <div className="list-action grid grid-cols-2 gap-3 px-3 absolute w-full bottom-5 max-lg:hidden">
                                 <div
                                     className="quick-view-btn w-full text-button-uppercase py-2 text-center rounded-full duration-300 bg-white hover:bg-black hover:text-white"
                                     onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleQuickviewOpen()
+                                        e.stopPropagation();
+                                        handleQuickviewOpen();
                                     }}
                                 >
                                     Quick View
                                 </div>
                                 {!hasNonColorAttributes ? (
                                     <div
-                                        className="add-cart-btn w-full text-button-uppercase py-2 text-center rounded-full duration-500 bg-white hover:bg-black hover:text-white"
+                                        className="add-cart-btn w-full text-button-uppercase py-2 px-0.5 text-center rounded-full duration-500 bg-white hover:bg-black hover:text-white"
                                         onClick={e => {
                                             e.stopPropagation();
-                                            handleAddToCart()
+                                            handleAddToCart();
                                         }}
                                     >
                                         Add To Cart
@@ -330,15 +334,15 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                             className="quick-shop-btn text-button-uppercase py-2 text-center rounded-full duration-500 bg-white hover:bg-black hover:text-white"
                                             onClick={e => {
                                                 e.stopPropagation();
-                                                setOpenQuickShop(!openQuickShop)
+                                                setOpenQuickShop(!openQuickShop);
                                             }}
                                         >
                                             Quick Shop
                                         </div>
                                         <div
-                                            className={`quick-shop-block absolute left-5 right-5 bg-white p-5 rounded-[20px] ${openQuickShop ? 'open' : ''}`}
+                                            className={`quick-shop-block absolute left-4 right-4 bg-white p-4 rounded-[20px] ${openQuickShop ? 'open' : ''}`}
                                             onClick={(e) => {
-                                                e.stopPropagation()
+                                                e.stopPropagation();
                                             }}
                                         >
                                             {sizes.length > 0 && (
@@ -357,8 +361,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                             <div
                                                 className="button-main w-full text-center rounded-full py-3 mt-4"
                                                 onClick={() => {
-                                                    handleAddToCart()
-                                                    setOpenQuickShop(false)
+                                                    handleAddToCart();
+                                                    setOpenQuickShop(false);
                                                 }}
                                             >
                                                 Add To cart
@@ -371,8 +375,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                 <div
                                     className="quick-view-btn w-9 h-9 flex items-center justify-center rounded-lg duration-300 bg-white hover:bg-black hover:text-white"
                                     onClick={(e) => {
-                                        e.stopPropagation()
-                                        handleQuickviewOpen()
+                                        e.stopPropagation();
+                                        handleQuickviewOpen();
                                     }}
                                 >
                                     <Icon.Eye className='text-lg' />
@@ -381,7 +385,7 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                     className="add-cart-btn w-9 h-9 flex items-center justify-center rounded-lg duration-300 bg-white hover:bg-black hover:text-white"
                                     onClick={e => {
                                         e.stopPropagation();
-                                        handleAddToCart()
+                                        handleAddToCart();
                                     }}
                                 >
                                     <Icon.ShoppingBagOpen className='text-lg' />
@@ -410,40 +414,31 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                     </div>
                                 </div>
                             )}
-                            <div className="product-name text-title duration-300">{data.name}</div>
-                            {colors.length > 0 && !hasNonColorAttributes && (
-                                <div className="list-color py-2 max-md:hidden flex items-center gap-3 flex-wrap duration-500">
-                                    {colors.map((item, index) => (
-                                        <div
-                                            key={index}
-                                            className={`color-item w-8 h-8 rounded-full duration-300 relative ${activeColor === item.label ? 'active' : ''}`}
-                                            style={{ backgroundColor: item.hex }}
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                handleActiveColor(item.label)
-                                            }}>
-                                            <div className="tag-action bg-black text-white caption2 capitalize px-1.5 py-0.5 rounded-sm">{item.label}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            {colors.length > 0 && hasNonColorAttributes && (
-                                <div className="list-color-image max-md:hidden flex items-center gap-3 flex-wrap duration-500">
-                                    {colors.map((item, index) => (
-                                        <div
-                                            className={`color-item w-12 h-12 rounded-xl duration-300 relative ${activeColor === item.label ? 'active' : ''}`}
-                                            key={index}
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                handleActiveColor(item.label)
-                                            }}
-                                        >
-                                            <div className='rounded-xl w-full h-full' style={{ backgroundColor: item.hex }} />
-                                            <div className="tag-action bg-black text-white caption2 capitalize px-1.5 py-0.5 rounded-sm">{item.label}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            <div className='w-full relative '>
+                                <div className="product-name text-title duration-300">{data.name}</div>
+                                {colors.length > 0 && (
+                                    <div className="list-color py-2 max-md:hidden flex items-center gap-3 flex-wrap duration-500">
+                                        {colors.map((item, index) => (
+                                            <div
+                                                key={index}
+                                                className={`color-item rounded-full duration-300 relative w-7 h-7  ${activeColor === item.value ? 'active' : 'outline outline-[0.6px] outline-gray-200'}`}
+                                                style={{ backgroundColor: item.hex }}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleActiveColor(item.value);
+                                                }}>
+                                                {activeColor === item.value ?
+                                                    <>
+                                                        <CheckCircleIcon className="text-gray-300 w-4 h-4 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                                                    </> : null
+                                                }
+                                                <div className="tag-action bg-black text-white caption2 capitalize px-1.5 py-0.5 rounded-sm">{item.label}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
 
                             <div className="product-price-block flex items-center gap-2 flex-wrap mt-1 duration-300 relative z-[1]">
                                 {saleInfo.hasActiveSale ? (
@@ -493,9 +488,9 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                         </div>
                                         <div className="list-action px-5 absolute w-full bottom-5 max-lg:hidden">
                                             <div
-                                                className={`quick-shop-block absolute left-5 right-5 bg-white p-5 rounded-[20px] ${openQuickShop ? 'open' : ''}`}
+                                                className={`quick-shop-block absolute left-4 right-4 bg-white p-4 rounded-[20px] ${openQuickShop ? 'open' : ''}`}
                                                 onClick={(e) => {
-                                                    e.stopPropagation()
+                                                    e.stopPropagation();
                                                 }}
                                             >
                                                 <div className="list-size flex items-center justify-center flex-wrap gap-2">
@@ -512,8 +507,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                                 <div
                                                     className="button-main w-full text-center rounded-full py-3 mt-4"
                                                     onClick={() => {
-                                                        handleAddToCart()
-                                                        setOpenQuickShop(false)
+                                                        handleAddToCart();
+                                                        setOpenQuickShop(false);
                                                     }}
                                                 >
                                                     Add To cart
@@ -559,8 +554,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                                                         className={`color-item w-12 h-12 rounded-xl duration-300 relative ${activeColor === item.color ? 'active' : ''}`}
                                                                         key={index}
                                                                         onClick={(e) => {
-                                                                            e.stopPropagation()
-                                                                            handleActiveColor(item.color)
+                                                                            e.stopPropagation();
+                                                                            handleActiveColor(item.color);
                                                                         }}
                                                                     >
                                                                         <Image
@@ -590,7 +585,7 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                                 className="quick-shop-btn button-main whitespace-nowrap py-2 px-9 max-lg:px-5 rounded-full bg-white text-black border border-black hover:bg-black hover:text-white"
                                                 onClick={e => {
                                                     e.stopPropagation();
-                                                    setOpenQuickShop(!openQuickShop)
+                                                    setOpenQuickShop(!openQuickShop);
                                                 }}
                                             >
                                                 Quick Shop
@@ -599,8 +594,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                                 <div
                                                     className={`add-wishlist-btn w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative ${wishlistState.wishlistArray.some(item => item.id === data.id) ? 'active' : ''}`}
                                                     onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        handleAddToWishlist()
+                                                        e.stopPropagation();
+                                                        handleAddToWishlist();
                                                     }}
                                                 >
                                                     <div className="tag-action bg-black text-white caption2 px-1.5 py-0.5 rounded-sm">Add To Wishlist</div>
@@ -617,8 +612,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                                 <div
                                                     className={`compare-btn w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative ${compareState.compareArray.some(item => item.id === data.id) ? 'active' : ''}`}
                                                     onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        handleAddToCompare()
+                                                        e.stopPropagation();
+                                                        handleAddToCompare();
                                                     }}
                                                 >
                                                     <div className="tag-action bg-black text-white caption2 px-1.5 py-0.5 rounded-sm">Compare Product</div>
@@ -628,8 +623,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                                 <div
                                                     className="quick-view-btn-list w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative"
                                                     onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        handleQuickviewOpen()
+                                                        e.stopPropagation();
+                                                        handleQuickviewOpen();
                                                     }}
                                                 >
                                                     <div className="tag-action bg-black text-white caption2 px-1.5 py-0.5 rounded-sm">Quick View</div>
@@ -656,8 +651,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                             <span
                                 className={`add-wishlist-btn w-8 h-8 bg-white flex items-center justify-center rounded-full box-shadow-sm duration-300 ${wishlistState.wishlistArray.some(item => item.id === data.id) ? 'active' : ''}`}
                                 onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleAddToWishlist()
+                                    e.stopPropagation();
+                                    handleAddToWishlist();
                                 }}
                             >
                                 {wishlistState.wishlistArray.some(item => item.id === data.id) ? (
@@ -673,8 +668,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                             <span
                                 className={`compare-btn w-8 h-8 bg-white flex items-center justify-center rounded-full box-shadow-sm duration-300 ${compareState.compareArray.some(item => item.id === data.id) ? 'active' : ''}`}
                                 onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleAddToCompare()
+                                    e.stopPropagation();
+                                    handleAddToCompare();
                                 }}
                             >
                                 <Icon.Repeat size={18} className='compare-icon' />
@@ -683,8 +678,8 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                             <span
                                 className="quick-view-btn w-8 h-8 bg-white flex items-center justify-center rounded-full box-shadow-sm duration-300"
                                 onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleQuickviewOpen()
+                                    e.stopPropagation();
+                                    handleQuickviewOpen();
                                 }}
                             >
                                 <Icon.Eye />
@@ -693,7 +688,7 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                 className="add-cart-btn w-8 h-8 bg-white flex items-center justify-center rounded-full box-shadow-sm duration-300"
                                 onClick={e => {
                                     e.stopPropagation();
-                                    handleAddToCart()
+                                    handleAddToCart();
                                 }}
                             >
                                 <Icon.ShoppingBagOpen />
@@ -721,7 +716,7 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                 <></>
             )}
         </>
-    )
-}
+    );
+};
 
-export default Product
+export default Product;

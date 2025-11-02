@@ -1,16 +1,24 @@
 export const countdownTime = () => {
-    const targetDate: Date = new Date('2024-07-28');
-    const currentDate: Date = new Date();
-    const difference: number = targetDate.getTime() - currentDate.getTime();
+    const now = new Date();
 
-    if (difference > 0) {
-        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+    // End of today at 23:59:59.999 local time
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
 
-        return { days, hours, minutes, seconds };
-    } else {
-        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    // If for any reason we're past endOfToday, fallback to tomorrow's end (rare edge)
+    let diffMs = endOfToday.getTime() - now.getTime();
+    if (diffMs < 0) {
+        const tomorrow = new Date(now);
+        tomorrow.setDate(now.getDate() + 1);
+        tomorrow.setHours(23, 59, 59, 999);
+        diffMs = tomorrow.getTime() - now.getTime();
     }
-}
+
+    const totalSeconds = Math.max(0, Math.floor(diffMs / 1000));
+    const days = Math.floor(totalSeconds / 86400); // will be 0 for "today" countdown
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return { days, hours, minutes, seconds };
+};

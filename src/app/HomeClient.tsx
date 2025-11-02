@@ -4,6 +4,7 @@ import React from 'react';
 import ProductSection from '@/components/Home7/ProductSection';
 import { useNewProducts, useWeekProducts, useTopSoldProducts, useDealsOfTheDay } from '@/hooks/queries/useProductLists';
 import { ProductType } from '@/type/ProductType';
+import CatB_Banner from '@/components/Banners/CatB_Banner';
 
 /**
  * HomeClient - Client-side component for homepage product sections
@@ -50,6 +51,8 @@ export default function HomeClient() {
                     viewAllLink="/shop"
                 />
             )}
+
+            <CatB_Banner />
 
             {/* Week Products Section */}
             {!isLoadingWeek && weekProducts && (

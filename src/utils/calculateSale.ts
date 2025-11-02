@@ -9,26 +9,21 @@ export interface SaleCalculation {
   bestVariant: SaleVariant | null;
 }
 
+// ...existing code...
+
 /**
- * Calculate the best sale discount for a product
- * Iterates through all sale variants to find the highest discount
- * 
- * Sale variant logic:
- * - attributeName: null & attributeValue: null → applies to entire product
- * - attributeName: set & attributeValue: null → applies to all variants of that attribute
- * - attributeName: set & attributeValue: set → applies to specific variant
- * 
- * @param sale - The sale object from the product
- * @param originalPrice - The original price of the product
- * @param activeAttribute - Optional active attribute (for variant-specific sales)
- * @returns Sale calculation with best discount
+ * Simple: pick the best applicable variant and compute price.
+ * - "All"/null means global (applies to whole product)
+ * - attributeName + null/"All" applies to all values of that attribute
+ * - attributeName + attributeValue applies to that exact pair
+ * - If start/end provided, enforce window; otherwise ignore.
  */
 export function calculateBestSale(
   sale: ProductSale | null | undefined,
   originalPrice: number,
   activeAttribute?: { name: string; value: string }
 ): SaleCalculation {
-  const defaultResult: SaleCalculation = {
+  const result: SaleCalculation = {
     hasActiveSale: false,
     originalPrice,
     discountedPrice: originalPrice,
@@ -37,88 +32,92 @@ export function calculateBestSale(
     bestVariant: null,
   };
 
-  // No sale or sale is not active
-  if (!sale || !sale.isActive || !sale.variants || sale.variants.length === 0) {
-    return defaultResult;
-  }
+  if (!sale || !sale.isActive || !sale.variants?.length) return result;
 
-  // Check if sale period is valid (if dates are provided)
-  const now = new Date();
-  if (sale.startDate && new Date(sale.startDate) > now) {
-    return defaultResult;
-  }
-  if (sale.endDate && new Date(sale.endDate) < now) {
-    return defaultResult;
-  }
+  const isAll = (v: unknown) =>
+    v === null || (typeof v === 'string' && v.trim().toLowerCase() === 'all');
 
-  let bestDiscount = 0;
-  let bestVariant: SaleVariant | null = null;
-  let bestDiscountedPrice = originalPrice;
-  let bestPercentOff = 0;
-  let bestAmountOff = 0;
+  const appliesToSelection = (v: SaleVariant): boolean => {
+    const nameAll = isAll(v.attributeName);
+    const valueAll = isAll(v.attributeValue);
 
-  // Iterate through all variants to find the best discount
-  for (const variant of sale.variants) {
-    // Check if variant has reached max buys
-    if (variant.maxBuys > 0 && variant.boughtCount >= variant.maxBuys) {
-      continue;
+    // Global
+    if (nameAll && valueAll) return true;
+
+    // Attribute-wide (e.g., Color: All)
+    if (!nameAll && valueAll) {
+      if (!activeAttribute) return true; // no selection => still applicable overall
+      return (
+        activeAttribute.name.trim().toLowerCase() === String(v.attributeName).trim().toLowerCase()
+      );
     }
 
-    // Calculate discount value for comparison
-    let discountValue = 0;
-    let discountedPrice = originalPrice;
-    let percentOff = 0;
-    let amountOff = 0;
-
-    if (variant.discount > 0) {
-      // Percentage discount
-      percentOff = variant.discount;
-      amountOff = Math.round((originalPrice * variant.discount) / 100);
-      discountedPrice = originalPrice - amountOff;
-      discountValue = amountOff;
-    } else if (variant.amountOff > 0) {
-      // Fixed amount discount
-      amountOff = variant.amountOff;
-      discountedPrice = Math.max(0, originalPrice - variant.amountOff);
-      percentOff = Math.round((variant.amountOff / originalPrice) * 100);
-      discountValue = variant.amountOff;
+    // Exact attribute/value match
+    if (!nameAll && !valueAll) {
+      if (!activeAttribute) return true; // treat as general if no selection chosen yet
+      return (
+        activeAttribute.name.trim().toLowerCase() ===
+          String(v.attributeName).trim().toLowerCase() &&
+        activeAttribute.value.trim().toLowerCase() === String(v.attributeValue).trim().toLowerCase()
+      );
     }
 
-    // Skip if no discount
-    if (discountValue === 0) continue;
+    // (nameAll && !valueAll) is an odd case; treat as global fallback
+    return true;
+  };
 
-    // Check if this variant applies to the current selection
-    const isApplicable = checkVariantApplicability(variant, activeAttribute);
-    if (!isApplicable) continue;
+  let best = result;
 
-    // Update best discount if this one is better
-    if (discountValue > bestDiscount) {
-      bestDiscount = discountValue;
-      bestVariant = variant;
-      bestDiscountedPrice = discountedPrice;
-      bestPercentOff = percentOff;
-      bestAmountOff = amountOff;
+  for (const v of sale.variants) {
+    if (!appliesToSelection(v)) continue;
+
+    // Compute discount
+    const pct = Math.max(0, v.discount || 0);
+    const off = Math.max(0, v.amountOff || 0);
+
+    // Pick the stronger discount outcome (in price terms)
+    const priceFromPct =
+      pct > 0 ? originalPrice - Math.round((originalPrice * pct) / 100) : originalPrice;
+    const priceFromOff = off > 0 ? Math.max(0, originalPrice - off) : originalPrice;
+
+    // Decide which discount this variant actually gives
+    let variantDiscounted = originalPrice;
+    let variantPercentOff = 0;
+    let variantAmountOff = 0;
+
+    if (pct > 0 && priceFromPct <= priceFromOff) {
+      variantDiscounted = priceFromPct;
+      variantPercentOff = pct;
+      variantAmountOff = originalPrice - priceFromPct;
+    } else if (off > 0) {
+      variantDiscounted = priceFromOff;
+      variantAmountOff = off;
+      variantPercentOff = Math.round((off / originalPrice) * 100);
+    } else {
+      continue; // no discount in this variant
+    }
+
+    // Keep the lowest price (best deal)
+    if (!best.bestVariant || variantDiscounted < best.discountedPrice) {
+      best = {
+        hasActiveSale: true,
+        originalPrice,
+        discountedPrice: variantDiscounted,
+        percentOff: variantPercentOff,
+        amountOff: variantAmountOff,
+        bestVariant: v,
+      };
     }
   }
 
-  // Return result
-  if (bestVariant) {
-    return {
-      hasActiveSale: true,
-      originalPrice,
-      discountedPrice: bestDiscountedPrice,
-      percentOff: bestPercentOff,
-      amountOff: bestAmountOff,
-      bestVariant,
-    };
-  }
-
-  return defaultResult;
+  return best;
 }
+
+// ...existing code...
 
 /**
  * Check if a sale variant is applicable based on attribute selection
- * 
+ *
  * @param variant - The sale variant to check
  * @param activeAttribute - The currently selected attribute (if any)
  * @returns true if the variant applies, false otherwise
@@ -161,7 +160,7 @@ function checkVariantApplicability(
 /**
  * Calculate total sold quantity from sale variants
  * Sums up all boughtCount values from sale variants
- * 
+ *
  * @param sale - The sale object from the product
  * @returns Total number of items sold through sales
  */
@@ -177,7 +176,7 @@ export function calculateSoldFromSale(sale: ProductSale | null | undefined): num
 
 /**
  * Calculate total capacity (sum of maxBuys) from sale variants
- * 
+ *
  * @param sale - The sale object from the product
  * @returns Total capacity across all sale variants
  */
@@ -193,7 +192,7 @@ export function calculateTotalCapacity(sale: ProductSale | null | undefined): nu
 
 /**
  * Calculate available quantity (maxBuys - boughtCount) from sale variants
- * 
+ *
  * @param sale - The sale object from the product
  * @returns Total available quantity across all sale variants
  */
@@ -212,7 +211,7 @@ export function calculateAvailableFromSale(sale: ProductSale | null | undefined)
 
 /**
  * Calculate sale progress percentage based on maxBuys and boughtCount
- * 
+ *
  * @param sale - The sale object from the product
  * @returns Percentage (0-100) of items sold vs capacity
  */
@@ -230,7 +229,7 @@ export function calculateSaleProgress(sale: ProductSale | null | undefined): num
 
 /**
  * Check if sale is sold out (total boughtCount >= total maxBuys)
- * 
+ *
  * @param sale - The sale object from the product
  * @returns true if sold out, false otherwise
  */
@@ -253,20 +252,19 @@ export function isSaleSoldOut(sale: ProductSale | null | undefined): boolean {
 /**
  * Check if sale should show the "Hot Sale" marquee banner
  * Conditions: sale must be active, isHot must be true, and not sold out
- * 
+ *
  * @param sale - The sale object from the product
  * @returns true if should show marquee, false otherwise
  */
 export function shouldShowSaleMarquee(sale: ProductSale | null | undefined): boolean {
-    console.log('Checking if sale marquee should be shown', sale);
   if (!sale || !sale.isActive || !sale.isHot) {
     return false;
   }
 
-// Check if sale has ended
-if (sale.endDate && new Date(sale.endDate) < new Date()) {
+  // Check if sale has ended
+  if (sale.type === 'Flash' && sale.endDate && new Date(sale.endDate) < new Date()) {
     return false;
-}
+  }
 
   // Don't show if sold out
   if (isSaleSoldOut(sale)) {
@@ -279,7 +277,7 @@ if (sale.endDate && new Date(sale.endDate) < new Date()) {
 /**
  * Check if sale should show the sold/available progress section
  * Conditions: sale must be active, isHot must be true, and not sold out
- * 
+ *
  * @param sale - The sale object from the product
  * @returns true if should show progress, false otherwise
  */
