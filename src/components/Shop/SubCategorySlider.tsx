@@ -7,6 +7,7 @@ import { Autoplay, Navigation, Grid } from 'swiper/modules';
 import 'swiper/css/bundle';
 import 'swiper/css/grid';
 import Link from 'next/link';
+import { getCdnBaseUrl, getCdnUrl } from '@/libs/cdn-url';
 
 interface SubCategory {
     name: string;
@@ -16,11 +17,10 @@ interface SubCategory {
 
 interface Props {
     categories: SubCategory[];
-    activeCategory: string | null;
-    onCategoryClick: (category: string) => void;
+    activeCategory?: string;
 }
 
-const SubCategorySlider: React.FC<Props> = ({ categories, activeCategory, onCategoryClick }) => {
+const SubCategorySlider: React.FC<Props> = ({ categories, activeCategory = true }) => {
     if (categories.length === 0) {
         return null;
     }
@@ -59,6 +59,9 @@ const SubCategorySlider: React.FC<Props> = ({ categories, activeCategory, onCate
                 .sub-category-slider .swiper-button-disabled {
                    display:none;
                     cursor: not-allowed;
+                }
+                .sub-category-slider .swiper-slide{
+                    justify-content: center;
                 }
             `}</style>
             <Swiper
@@ -109,7 +112,7 @@ const SubCategorySlider: React.FC<Props> = ({ categories, activeCategory, onCate
                     },
                     1536: {
                         slidesPerView: 7,
-                        spaceBetween: 36,
+                        spaceBetween: 34,
                         grid: {
                             rows: 2,
                             fill: 'row',
@@ -120,22 +123,21 @@ const SubCategorySlider: React.FC<Props> = ({ categories, activeCategory, onCate
                 {categories.map((category, index) => (
                     <SwiperSlide key={index}>
                         <Link
-                            className={`category-item flex flex-col items-center cursor-pointer group ${activeCategory === category.slug ? 'active' : ''
-                                }`}
-                            href={`/shop/${category.slug}`}
+                            className={`category-item flex flex-col items-center cursor-pointer group active`}
+                            href={`/category/${category.slug}`}
                         >
                             <div
-                                className={`image-wrapper relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden border-2 transition-all duration-300 ${activeCategory === category.slug
+                                className={`image-wrapper relative w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-full overflow-hidden border-2 transition-all duration-300 ${activeCategory === category.slug
                                     ? 'border-black scale-110'
-                                    : 'border-line group-hover:border-gray-400 group-hover:scale-105'
+                                    : 'border-line group-hover:border-gray-400'
                                     }`}
                             >
                                 <Image
-                                    src={category.image}
+                                    src={getCdnUrl(category.image)}
                                     alt={category.name}
                                     width={100}
                                     height={100}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-all"
                                 />
                             </div>
                             <div

@@ -15,6 +15,7 @@ import { useModalCartContext } from "@/context/ModalCartContext";
 import { useModalWishlistContext } from "@/context/ModalWishlistContext";
 import { useModalSearchContext } from "@/context/ModalSearchContext";
 import { useCart } from "@/context/CartContext";
+import { useCartCount } from '@/hooks/useCartCount';
 
 const MenuPet = () => {
   const pathname = usePathname();
@@ -24,6 +25,7 @@ const MenuPet = () => {
   const [openSubNavMobile, setOpenSubNavMobile] = useState<number | null>(null);
   const { openModalCart } = useModalCartContext();
   const { cartState } = useCart();
+  const { count: cartCount } = useCartCount();
   const { openModalWishlist } = useModalWishlistContext();
   const { openModalSearch } = useModalSearchContext();
 
@@ -133,7 +135,7 @@ const MenuPet = () => {
                   <Icon.Handbag size={24} color="black" />
                   <div className="caption1">Cart</div>
                   <span className="quantity cart-quantity absolute -right-1 -top-1.5 text-xs text-white bg-black w-4 h-4 flex items-center justify-center rounded-full">
-                    {cartState.cartArray.length}
+                    {cartCount}
                   </span>
                 </div>
               </div>
@@ -154,9 +156,8 @@ const MenuPet = () => {
                   <div className="text-button-uppercase text-white whitespace-nowrap">Shop By</div>
                 </div>
                 <div
-                  className={`sub-menu-department absolute top-[44px] left-0 right-0 h-max bg-white rounded-b-2xl ${
-                    openShopDepartmentPopup ? "open" : ""
-                  }`}>
+                  className={`sub-menu-department absolute top-[44px] left-0 right-0 h-max bg-white rounded-b-2xl ${openShopDepartmentPopup ? "open" : ""
+                    }`}>
                   <div className="item block">
                     <Link href={"/shop/breadcrumb-img"} className="caption1 py-4 px-5 border-b border-line whitespace-nowrap block">
                       Dog Food
@@ -606,36 +607,32 @@ const MenuPet = () => {
                                 <li>
                                   <Link
                                     href={"/shop/default"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/shop/default" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/shop/default" ? "active" : ""
+                                      }`}>
                                     Shop Default
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/shop/default-grid"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/shop/default-grid" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/shop/default-grid" ? "active" : ""
+                                      }`}>
                                     Shop Default Grid
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/shop/default-list"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/shop/default-list" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/shop/default-list" ? "active" : ""
+                                      }`}>
                                     Shop Default List
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/shop/fullwidth"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/shop/fullwidth" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/shop/fullwidth" ? "active" : ""
+                                      }`}>
                                     Shop Full Width
                                   </Link>
                                 </li>
@@ -840,54 +837,48 @@ const MenuPet = () => {
                                 <li>
                                   <Link
                                     href={"/product/thumbnail-left"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/product/thumbnail-left" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/product/thumbnail-left" ? "active" : ""
+                                      }`}>
                                     Products Thumbnails Left
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/product/thumbnail-bottom"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/product/thumbnail-bottom" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/product/thumbnail-bottom" ? "active" : ""
+                                      }`}>
                                     Products Thumbnails Bottom
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/product/one-scrolling"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/product/one-scrolling" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/product/one-scrolling" ? "active" : ""
+                                      }`}>
                                     Products Grid 1 Scrolling
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/product/two-scrolling"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/product/two-scrolling" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/product/two-scrolling" ? "active" : ""
+                                      }`}>
                                     Products Grid 2 Scrolling
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/product/combined-one"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/product/combined-one" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/product/combined-one" ? "active" : ""
+                                      }`}>
                                     Products Combined 1
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/product/combined-two"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/product/combined-two" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/product/combined-two" ? "active" : ""
+                                      }`}>
                                     Products Combined 2
                                   </Link>
                                 </li>
@@ -952,9 +943,8 @@ const MenuPet = () => {
                   <li className="h-full relative">
                     <Link
                       href="#!"
-                      className={`text-button-uppercase duration-300 h-full flex items-center justify-center ${
-                        pathname.includes("/pages") ? "active" : ""
-                      }`}>
+                      className={`text-button-uppercase duration-300 h-full flex items-center justify-center ${pathname.includes("/pages") ? "active" : ""
+                        }`}>
                       Pages
                     </Link>
                     <div className="sub-menu py-3 px-5 -left-10 absolute bg-white rounded-b-xl">
@@ -1067,90 +1057,80 @@ const MenuPet = () => {
                           <li>
                             <Link
                               href="/homepages/fashion2"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/fashion2" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/fashion2" ? "active" : ""
+                                }`}>
                               Home Fashion 2
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/fashion3"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/fashion3" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/fashion3" ? "active" : ""
+                                }`}>
                               Home Fashion 3
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/fashion4"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/fashion4" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/fashion4" ? "active" : ""
+                                }`}>
                               Home Fashion 4
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/fashion5"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/fashion5" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/fashion5" ? "active" : ""
+                                }`}>
                               Home Fashion 5
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/fashion6"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/fashion6" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/fashion6" ? "active" : ""
+                                }`}>
                               Home Fashion 6
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/fashion7"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/fashion7" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/fashion7" ? "active" : ""
+                                }`}>
                               Home Fashion 7
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/fashion8"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/fashion8" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/fashion8" ? "active" : ""
+                                }`}>
                               Home Fashion 8
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/fashion9"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/fashion9" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/fashion9" ? "active" : ""
+                                }`}>
                               Home Fashion 9
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/fashion10"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/fashion10" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/fashion10" ? "active" : ""
+                                }`}>
                               Home Fashion 10
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/fashion11"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/fashion11" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/fashion11" ? "active" : ""
+                                }`}>
                               Home Fashion 11
                             </Link>
                           </li>
@@ -1159,36 +1139,32 @@ const MenuPet = () => {
                           <li>
                             <Link
                               href="/homepages/underwear"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/underwear" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/underwear" ? "active" : ""
+                                }`}>
                               Home Underwear
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/cosmetic1"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/cosmetic1" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/cosmetic1" ? "active" : ""
+                                }`}>
                               Home Cosmetic 1
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/cosmetic2"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/cosmetic2" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/cosmetic2" ? "active" : ""
+                                }`}>
                               Home Cosmetic 2
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/cosmetic3"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/cosmetic3" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/cosmetic3" ? "active" : ""
+                                }`}>
                               Home Cosmetic 3
                             </Link>
                           </li>
@@ -1202,18 +1178,16 @@ const MenuPet = () => {
                           <li>
                             <Link
                               href="/homepages/jewelry"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/jewelry" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/jewelry" ? "active" : ""
+                                }`}>
                               Home Jewelry
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/furniture"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/furniture" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/furniture" ? "active" : ""
+                                }`}>
                               Home Furniture
                             </Link>
                           </li>
@@ -1241,18 +1215,16 @@ const MenuPet = () => {
                           <li>
                             <Link
                               href="/homepages/organic"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/organic" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/organic" ? "active" : ""
+                                }`}>
                               Home Organic
                             </Link>
                           </li>
                           <li>
                             <Link
                               href="/homepages/marketplace"
-                              className={`nav-item-mobile text-secondary duration-300 ${
-                                pathname === "/homepages/marketplace" ? "active" : ""
-                              }`}>
+                              className={`nav-item-mobile text-secondary duration-300 ${pathname === "/homepages/marketplace" ? "active" : ""
+                                }`}>
                               Home Marketplace
                             </Link>
                           </li>
@@ -1519,36 +1491,32 @@ const MenuPet = () => {
                                 <li>
                                   <Link
                                     href={"/shop/default"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/shop/default" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/shop/default" ? "active" : ""
+                                      }`}>
                                     Shop Default
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/shop/default-grid"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/shop/default-grid" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/shop/default-grid" ? "active" : ""
+                                      }`}>
                                     Shop Default Grid
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/shop/default-list"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/shop/default-list" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/shop/default-list" ? "active" : ""
+                                      }`}>
                                     Shop Default List
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/shop/fullwidth"}
-                                    className={`link text-secondary duration-300 cursor-pointer ${
-                                      pathname === "/shop/fullwidth" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 cursor-pointer ${pathname === "/shop/fullwidth" ? "active" : ""
+                                      }`}>
                                     Shop Full Width
                                   </Link>
                                 </li>
@@ -1742,18 +1710,16 @@ const MenuPet = () => {
                                 <li>
                                   <Link
                                     href={"/product/thumbnail-left"}
-                                    className={`link text-secondary duration-300 ${
-                                      pathname === "/product/thumbnail-left" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 ${pathname === "/product/thumbnail-left" ? "active" : ""
+                                      }`}>
                                     Products Thumbnails Left
                                   </Link>
                                 </li>
                                 <li>
                                   <Link
                                     href={"/product/thumbnail-bottom"}
-                                    className={`link text-secondary duration-300 ${
-                                      pathname === "/product/thumbnail-bottom" ? "active" : ""
-                                    }`}>
+                                    className={`link text-secondary duration-300 ${pathname === "/product/thumbnail-bottom" ? "active" : ""
+                                      }`}>
                                     Products Thumbnails Bottom
                                   </Link>
                                 </li>

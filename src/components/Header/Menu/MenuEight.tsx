@@ -1,13 +1,13 @@
-'use client'
+'use client';
 
-import React, { useState, useEffect } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
 import { usePathname } from 'next/navigation';
 import Product from '@/components/Product/Product';
-import productData from '@/data/Product.json'
+import productData from '@/data/Product.json';
 import useLoginPopup from '@/store/useLoginPopup';
 import useSubMenuDepartment from '@/store/useSubMenuDepartment';
 import useMenuMobile from '@/store/useMenuMobile';
@@ -16,6 +16,8 @@ import { useModalWishlistContext } from '@/context/ModalWishlistContext';
 import { useModalSearchContext } from '@/context/ModalSearchContext';
 import { useCart } from '@/context/CartContext';
 import NavCategoriesComponent from './NavCategoriesComponent';
+import NavCategoriesMobile from './NavCategoriesMobile';
+import { useCartCount } from '@/hooks/useCartCount';
 
 // Data constants
 
@@ -84,28 +86,29 @@ const MOBILE_DEMO_LINKS_COL2 = [
 ];
 
 const MenuEight = () => {
-    const pathname = usePathname()
-    const { openLoginPopup, handleLoginPopup } = useLoginPopup()
-    const { openSubMenuDepartment, handleSubMenuDepartment } = useSubMenuDepartment()
-    const { openMenuMobile, handleMenuMobile } = useMenuMobile()
-    const [openSubNavMobile, setOpenSubNavMobile] = useState<number | null>(null)
-    const { openModalCart } = useModalCartContext()
-    const { cartState } = useCart()
-    const { openModalWishlist } = useModalWishlistContext()
+    const pathname = usePathname();
+    const { openLoginPopup, handleLoginPopup } = useLoginPopup();
+    const { openSubMenuDepartment, handleSubMenuDepartment } = useSubMenuDepartment();
+    const { openMenuMobile, handleMenuMobile } = useMenuMobile();
+    const [openSubNavMobile, setOpenSubNavMobile] = useState<number | null>(null);
+    const { openModalCart } = useModalCartContext();
+    const { cartState } = useCart();
+    const { count: cartCount } = useCartCount();
+    const { openModalWishlist } = useModalWishlistContext();
 
     const [searchKeyword, setSearchKeyword] = useState('');
-    const router = useRouter()
+    const router = useRouter();
 
     const handleSearch = (value: string) => {
-        router.push(`/search-result?query=${value}`)
-        setSearchKeyword('')
-    }
+        router.push(`/search-result?query=${value}`);
+        setSearchKeyword('');
+    };
 
     const handleOpenSubNavMobile = (index: number) => {
-        setOpenSubNavMobile(openSubNavMobile === index ? null : index)
-    }
+        setOpenSubNavMobile(openSubNavMobile === index ? null : index);
+    };
 
-    const [fixedHeader, setFixedHeader] = useState(false)
+    const [fixedHeader, setFixedHeader] = useState(false);
     const [lastScrollPosition, setLastScrollPosition] = useState(0);
 
     useEffect(() => {
@@ -190,7 +193,7 @@ const MenuEight = () => {
                                 </div>
                                 <div className="cart-icon flex items-center relative cursor-pointer" onClick={openModalCart}>
                                     <Icon.Handbag size={24} color='black' />
-                                    <span className="quantity cart-quantity absolute -right-1.5 -top-1.5 text-xs text-white bg-black w-4 h-4 flex items-center justify-center rounded-full">{cartState.cartArray.length}</span>
+                                    <span className="quantity cart-quantity absolute -right-1.5 -top-1.5 text-xs text-white bg-black w-4 h-4 flex items-center justify-center rounded-full">{cartCount}</span>
                                 </div>
                             </div>
                         </div>
@@ -204,7 +207,7 @@ const MenuEight = () => {
                     <div className="top-nav-menu-main flex items-center justify-between h-full relative">
                         <div className="left flex items-center h-full">
 
-                                <NavCategoriesComponent isOpen={openSubMenuDepartment}  />
+                            <NavCategoriesComponent isOpen={openSubMenuDepartment} />
                             <div className="menu-main style-eight h-full pl-12 max-lg:hidden">
                                 <ul className='flex items-center gap-8 h-full'>
                                     <li className='h-full relative'>
@@ -232,7 +235,7 @@ const MenuEight = () => {
                                             ))}
                                         </div>
                                     </li>
-                                    
+
                                     {/* Features, Shop, Product menus remain as they have complex nested structures */}
                                     <li className='h-full'>
                                         <Link href="#!" className='text-button-uppercase duration-300 h-full flex items-center justify-center'>
@@ -240,21 +243,21 @@ const MenuEight = () => {
                                         </Link>
                                         {/* ... keep existing Features mega menu ... */}
                                     </li>
-                                    
+
                                     <li className='h-full'>
                                         <Link href="#!" className='text-button-uppercase duration-300 h-full flex items-center justify-center'>
                                             Shop
                                         </Link>
                                         {/* ... keep existing Shop mega menu ... */}
                                     </li>
-                                    
+
                                     <li className='h-full'>
                                         <Link href="#!" className='text-button-uppercase duration-300 h-full flex items-center justify-center'>
                                             Product
                                         </Link>
                                         {/* ... keep existing Product mega menu ... */}
                                     </li>
-                                    
+
                                     <li className='h-full relative'>
                                         <Link href="#!" className='text-button-uppercase duration-300 h-full flex items-center justify-center'>
                                             Blog
@@ -274,7 +277,7 @@ const MenuEight = () => {
                                             </ul>
                                         </div>
                                     </li>
-                                    
+
                                     <li className='h-full relative'>
                                         <Link
                                             href="#!"
@@ -311,7 +314,7 @@ const MenuEight = () => {
             {/* Mobile Menu */}
             <div id="menu-mobile" className={`${openMenuMobile ? 'open' : ''}`}>
                 <div className="menu-container bg-white h-full">
-                    <div className="container h-full">
+                    <div className="container h-full px-3">
                         <div className="menu-main h-full overflow-hidden">
                             <div className="heading py-2 relative flex items-center justify-center">
                                 <div
@@ -330,53 +333,36 @@ const MenuEight = () => {
                                 <ul>
                                     {/* Demo Menu */}
                                     <li
-                                        className={`${openSubNavMobile === 1 ? 'open' : ''}`}
-                                        onClick={() => handleOpenSubNavMobile(1)}
                                     >
-                                        <a href={'#!'} className={`text-xl font-semibold flex items-center justify-between`}>Demo
+                                        <Link href={'/'} className={`text-xl font-semibold flex items-center justify-between`}>Home
+                                        </Link>
+                                    </li>
+                                    {/* categories */}
+                                    <li
+                                        className={`${openSubNavMobile === 9 ? 'open' : ''}`}
+                                        onClick={() => handleOpenSubNavMobile(9)}
+                                    >
+                                        <div className={`text-xl font-semibold flex items-center justify-between mt-5`}>Categories
                                             <span className='text-right'>
                                                 <Icon.CaretRight size={20} />
                                             </span>
-                                        </a>
-                                        <div className="sub-nav-mobile">
+                                        </div>
+                                        <div className="sub-nav-mobile h-full">
                                             <div
                                                 className="back-btn flex items-center gap-3"
-                                                onClick={() => handleOpenSubNavMobile(1)}
+                                                onClick={() => handleOpenSubNavMobile(9)}
                                             >
                                                 <Icon.CaretLeft />
                                                 Back
                                             </div>
-                                            <div className="list-nav-item w-full grid grid-cols-2 pt-2 pb-6">
-                                                <ul>
-                                                    {MOBILE_DEMO_LINKS_COL1.map((link, index) => (
-                                                        <li key={index}>
-                                                            <Link
-                                                                href={link.href}
-                                                                className={`nav-item-mobile text-secondary duration-300 ${pathname === link.href ? 'active' : ''}`}
-                                                            >
-                                                                {link.label}
-                                                            </Link>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                                <ul>
-                                                    {MOBILE_DEMO_LINKS_COL2.map((link, index) => (
-                                                        <li key={index}>
-                                                            <Link
-                                                                href={link.href}
-                                                                className={`nav-item-mobile text-secondary duration-300 ${pathname === link.href ? 'active' : ''}`}
-                                                            >
-                                                                {link.label}
-                                                            </Link>
-                                                        </li>
-                                                    ))}
-                                                </ul>
+                                            <div className="list-nav-item w-full pt-2 pb-6 h-full">
+                                                <NavCategoriesMobile />
                                             </div>
                                         </div>
                                     </li>
-                                    
+
                                     {/* Features, Shop, Product mobile menus - keep existing complex structures */}
-                                    
+
                                     {/* Blog Menu */}
                                     <li
                                         className={`${openSubNavMobile === 5 ? 'open' : ''}`}
@@ -411,7 +397,7 @@ const MenuEight = () => {
                                             </div>
                                         </div>
                                     </li>
-                                    
+
                                     {/* Pages Menu */}
                                     <li
                                         className={`${openSubNavMobile === 6 ? 'open' : ''}`}
@@ -453,7 +439,7 @@ const MenuEight = () => {
                 </div>
             </div>
         </>
-    )
-}
+    );
+};
 
-export default MenuEight
+export default MenuEight;

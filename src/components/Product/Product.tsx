@@ -4,10 +4,12 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ProductType } from '@/type/ProductType';
+import { ProductListItem } from '@/types/product';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
 import { useCart } from '@/context/CartContext';
 import { useModalCartContext } from '@/context/ModalCartContext';
-import { useWishlist } from '@/context/WishlistContext';
+import { useIsInWishlist } from '@/hooks/queries/useWishlist';
+import { useAddToWishlist, useRemoveFromWishlist } from '@/hooks/mutations/useWishlistMutations';
 import { useModalWishlistContext } from '@/context/ModalWishlistContext';
 import { useCompare } from '@/context/CompareContext';
 import { useModalCompareContext } from '@/context/ModalCompareContext';
@@ -28,24 +30,65 @@ import {
 } from '@/utils/calculateSale';
 import { ProductVariant, ProductVariantChild } from '@/types/product';
 import { CheckCircleIcon } from '@phosphor-icons/react';
+import { useSession } from 'next-auth/react';
+import { useAddToCart } from '@/hooks/mutations/useCart';
+import { useGuestCart } from '@/hooks/useGuestCart';
 
 interface ProductProps {
-    data: ProductType;
+    data: ProductType | ProductListItem;
     type: 'grid' | 'list' | 'marketplace';
 }
 
-const Product: React.FC<ProductProps> = ({ data, type }) => {
+// Type guard to check if data is ProductListItem
+function isProductListItem(data: ProductType | ProductListItem): data is ProductListItem {
+    return 'images' in data && Array.isArray(data.images);
+}
+
+const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
+    // Normalize data to ensure compatibility with legacy ProductType fields
+    const data = useMemo<ProductType>(() => {
+        if (isProductListItem(rawData)) {
+            // Convert ProductListItem to ProductType for component compatibility
+            return {
+                ...rawData,
+                id: rawData._id,
+                type: '', // not used
+                gender: '', // not used
+                new: false, // calculated separately
+                rate: rawData.rating ?? 0,
+                originPrice: rawData.price,
+                brand: '', // not provided in ProductListItem
+                sold: rawData.originStock - rawData.stock,
+                quantity: rawData.stock,
+                quantityPurchase: 1,
+                sizes: [], // handled via attributes
+                variation: [], // handled via attributes
+                description: '', // not in ProductListItem
+                description_images: [], // not in ProductListItem
+                action: 'add to cart',
+                createdAt: '', // not in ProductListItem
+            } as ProductType;
+        }
+        return rawData;
+    }, [rawData]);
     const [activeColor, setActiveColor] = useState<string>('');
     const [activeSize, setActiveSize] = useState<string>('');
     const [openQuickShop, setOpenQuickShop] = useState<boolean>(false);
     const { addToCart, updateCart, cartState } = useCart();
     const { openModalCart } = useModalCartContext();
-    const { addToWishlist, removeFromWishlist, wishlistState } = useWishlist();
+    const { isInWishlist, wishlistItemId } = useIsInWishlist(data._id);
+    const { mutate: addToWishlistMutation } = useAddToWishlist();
+    const { mutate: removeFromWishlistMutation } = useRemoveFromWishlist();
     const { openModalWishlist } = useModalWishlistContext();
     const { addToCompare, removeFromCompare, compareState } = useCompare();
     const { openModalCompare } = useModalCompareContext();
     const { openQuickview } = useModalQuickviewContext();
     const router = useRouter();
+    const { data: session } = useSession();
+
+    // Cart operations - ALWAYS use localStorage for current session
+    // Server cart is only for cross-device/session sync, not for active session
+    const { addItem: addToLocalCart } = useGuestCart();
 
     // Narrow types for optional new fields without changing global ProductType
     type AttrChild = { name: string; colorCode?: string; };
@@ -136,24 +179,62 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
             return;
         }
 
-        const qty = singlePack?.quantity ?? data.quantityPurchase;
+        const qty = singlePack?.quantity ?? data.quantityPurchase ?? 1;
 
-        if (!cartState.cartArray.find(item => item.id === data.id)) {
-            addToCart({ ...data });
-            updateCart(data.id, qty, activeSize, activeColor);
-        } else {
-            updateCart(data.id, qty, activeSize, activeColor);
+        // Build attributes array
+        const attributes: Array<{ name: string; value: string; }> = [];
+        if (activeColor) {
+            attributes.push({ name: 'Color', value: activeColor });
         }
-        openModalCart();
+        if (activeSize) {
+            attributes.push({ name: 'Size', value: activeSize });
+        }
+
+        // ALWAYS use localStorage for current session (whether guest or authenticated)
+        // Server cart is only for cross-device/session sync
+        try {
+            addToLocalCart(
+                data._id || data.id,
+                qty,
+                attributes,
+                {
+                    name: data.name,
+                    price: data.price,
+                    sku: data.sku || data.id,
+                    image: data.images?.[0]?.url || '',
+                },
+                data.price, // unitPrice
+                data.sale?._id, // sale ID if active
+                undefined // saleVariantIndex - would need to calculate from active variant
+            );
+            openModalCart();
+        } catch (error) {
+            console.error('Failed to add to cart:', error);
+            alert('Failed to add item to cart. Please try again.');
+        }
     };
 
     const handleAddToWishlist = () => {
-        // if product existed in wishlit, remove from wishlist and set state to false
-        if (wishlistState.wishlistArray.some(item => item.id === data.id)) {
-            removeFromWishlist(data.id);
+        // if product existed in wishlist, remove from wishlist
+        if (isInWishlist && wishlistItemId) {
+            removeFromWishlistMutation(wishlistItemId);
         } else {
-            // else, add to wishlist and set state to true
-            addToWishlist(data);
+            // else, add to wishlist with optimistic product data
+            addToWishlistMutation({
+                productId: data._id,
+                product: {
+                    _id: data._id,
+                    name: data.name,
+                    slug: data.slug,
+                    price: data.price,
+                    images: data.images || [],
+                    category: data.category,
+                    stock: data.stock,
+                    originStock: data.originStock,
+                    sku: data.sku,
+                    sale: null,
+                },
+            });
         }
         openModalWishlist();
     };
@@ -175,7 +256,7 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
     };
 
     const handleQuickviewOpen = () => {
-        openQuickview(data);
+        openQuickview(data._id || data.id);
     };
 
     const handleDetailProduct = (productId: string) => {
@@ -238,26 +319,28 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                 </div>
                             )}
                             <div className="list-action-right absolute top-3 right-3 max-lg:hidden">
+                                {session?.user && (
+                                    <div
+                                        className={`add-wishlist-btn w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative ${isInWishlist ? 'active' : ''}`}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleAddToWishlist();
+                                        }}
+                                    >
+                                        <div className="tag-action bg-black text-white caption2 px-1.5 py-0.5 rounded-sm">Add To Wishlist</div>
+                                        {isInWishlist ? (
+                                            <>
+                                                <Icon.Heart size={18} weight='fill' className='text-white' />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Icon.Heart size={18} />
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                                 <div
-                                    className={`add-wishlist-btn w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative ${wishlistState.wishlistArray.some(item => item.id === data.id) ? 'active' : ''}`}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleAddToWishlist();
-                                    }}
-                                >
-                                    <div className="tag-action bg-black text-white caption2 px-1.5 py-0.5 rounded-sm">Add To Wishlist</div>
-                                    {wishlistState.wishlistArray.some(item => item.id === data.id) ? (
-                                        <>
-                                            <Icon.Heart size={18} weight='fill' className='text-white' />
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Icon.Heart size={18} />
-                                        </>
-                                    )}
-                                </div>
-                                <div
-                                    className={`compare-btn w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative mt-2 ${compareState.compareArray.some(item => item.id === data.id) ? 'active' : ''}`}
+                                    className={`compare-btn w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative ${session?.user ? 'mt-2' : ''} ${compareState.compareArray.some(item => item.id === data.id) ? 'active' : ''}`}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         handleAddToCompare();
@@ -270,7 +353,7 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                             </div>
                             <div className="product-img w-full h-full aspect-[3/4]">
                                 <Image
-                                    src={getCdnUrl(data.images.find((img) => img.cover_image)?.url)}
+                                    src={getCdnUrl(data.images ? data.images.find((img) => img.cover_image)?.url : data.description_images.find((img) => img.cover_image)?.url || '')}
                                     width={500}
                                     height={500}
                                     alt={data.name}
@@ -328,7 +411,7 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                 </div>
                                 {!hasNonColorAttributes ? (
                                     <div
-                                        className="add-cart-btn w-full text-button-uppercase py-2 px-0.5 text-center rounded-full duration-500 bg-white hover:bg-black hover:text-white"
+                                        className="add-cart-btn w-full text-button-uppercase py-2 px-0.5 text-center rounded-full duration-500 bg-white hover:bg-black hover:text-white cursor-pointer"
                                         onClick={e => {
                                             e.stopPropagation();
                                             handleAddToCart();
@@ -367,7 +450,7 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                                 </div>
                                             )}
                                             <div
-                                                className="button-main w-full text-center rounded-full py-3 mt-4"
+                                                className="button-main w-full text-center rounded-full py-3 mt-4 cursor-pointer"
                                                 onClick={() => {
                                                     handleAddToCart();
                                                     setOpenQuickShop(false);
@@ -513,10 +596,10 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                                     ))}
                                                 </div>
                                                 <div
-                                                    className="button-main w-full text-center rounded-full py-3 mt-4"
-                                                    onClick={() => {
+                                                    className="button-main w-full text-center cursor-pointer"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
                                                         handleAddToCart();
-                                                        setOpenQuickShop(false);
                                                     }}
                                                 >
                                                     Add To cart
@@ -600,14 +683,14 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                                             </div>
                                             <div className="list-action-right flex items-center justify-center gap-3 mt-4">
                                                 <div
-                                                    className={`add-wishlist-btn w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative ${wishlistState.wishlistArray.some(item => item.id === data.id) ? 'active' : ''}`}
+                                                    className={`add-wishlist-btn w-[32px] h-[32px] flex items-center justify-center rounded-full bg-white duration-300 relative ${isInWishlist ? 'active' : ''}`}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleAddToWishlist();
                                                     }}
                                                 >
                                                     <div className="tag-action bg-black text-white caption2 px-1.5 py-0.5 rounded-sm">Add To Wishlist</div>
-                                                    {wishlistState.wishlistArray.some(item => item.id === data.id) ? (
+                                                    {isInWishlist ? (
                                                         <>
                                                             <Icon.Heart size={18} weight='fill' className='text-white' />
                                                         </>
@@ -656,23 +739,25 @@ const Product: React.FC<ProductProps> = ({ data, type }) => {
                     <div className="bg-img relative w-full">
                         <Image className='w-full aspect-square' width={5000} height={5000} src={getCdnUrl(data.images.find((img) => img.cover_image)!.url)} alt="img" />
                         <div className="list-action flex flex-col gap-1 absolute top-0 right-0">
-                            <span
-                                className={`add-wishlist-btn w-8 h-8 bg-white flex items-center justify-center rounded-full box-shadow-sm duration-300 ${wishlistState.wishlistArray.some(item => item.id === data.id) ? 'active' : ''}`}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddToWishlist();
-                                }}
-                            >
-                                {wishlistState.wishlistArray.some(item => item.id === data.id) ? (
-                                    <>
-                                        <Icon.Heart size={18} weight='fill' className='text-white' />
-                                    </>
-                                ) : (
-                                    <>
-                                        <Icon.Heart size={18} />
-                                    </>
-                                )}
-                            </span>
+                            {session?.user && (
+                                <span
+                                    className={`add-wishlist-btn w-8 h-8 bg-white flex items-center justify-center rounded-full box-shadow-sm duration-300 ${isInWishlist ? 'active' : ''}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAddToWishlist();
+                                    }}
+                                >
+                                    {isInWishlist ? (
+                                        <>
+                                            <Icon.Heart size={18} weight='fill' className='text-white' />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Icon.Heart size={18} />
+                                        </>
+                                    )}
+                                </span>
+                            )}
                             <span
                                 className={`compare-btn w-8 h-8 bg-white flex items-center justify-center rounded-full box-shadow-sm duration-300 ${compareState.compareArray.some(item => item.id === data.id) ? 'active' : ''}`}
                                 onClick={(e) => {

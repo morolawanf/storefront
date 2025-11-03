@@ -1,19 +1,19 @@
-'use client'
-import React, { useState, useEffect } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import TopNavOne from '@/components/Header/TopNav/TopNavOne'
-import MenuOne from '@/components/Header/Menu/MenuOne'
-import Breadcrumb from '@/components/Breadcrumb/Breadcrumb'
-import Footer from '@/components/Footer/Footer'
+'use client';
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import TopNavOne from '@/components/Header/TopNav/TopNavOne';
+import MenuOne from '@/components/Header/Menu/MenuOne';
+import Breadcrumb from '@/components/Breadcrumb/Breadcrumb';
+import Footer from '@/components/Footer/Footer';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
-import { useCart } from '@/context/CartContext'
-import { countdownTime } from '@/store/countdownTime'
+import { useGuestCart } from '@/hooks/useGuestCart';
+import { countdownTime } from '@/store/countdownTime';
 
 const Cart = () => {
     const [timeLeft, setTimeLeft] = useState(countdownTime());
-    const router = useRouter()
+    const router = useRouter();
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -23,52 +23,51 @@ const Cart = () => {
         return () => clearInterval(timer);
     }, []);
 
-    const { cartState, updateCart, removeFromCart } = useCart();
+    const { items: cartItems, updateItem, removeItem, getTotals } = useGuestCart();
 
-    const handleQuantityChange = (productId: string, newQuantity: number) => {
-        // Tìm sản phẩm trong giỏ hàng
-        const itemToUpdate = cartState.cartArray.find((item) => item.id === productId);
-
-        // Kiểm tra xem sản phẩm có tồn tại không
-        if (itemToUpdate) {
-            // Truyền giá trị hiện tại của selectedSize và selectedColor
-            updateCart(productId, newQuantity, itemToUpdate.selectedSize, itemToUpdate.selectedColor);
-        }
+    const handleQuantityChange = (itemId: string, newQuantity: number) => {
+        updateItem(itemId, { qty: newQuantity });
     };
 
     let moneyForFreeship = 150;
-    let [totalCart, setTotalCart] = useState<number>(0)
-    let [discountCart, setDiscountCart] = useState<number>(0)
-    let [shipCart, setShipCart] = useState<number>(30)
-    let [applyCode, setApplyCode] = useState<number>(0)
+    let [totalCart, setTotalCart] = useState<number>(0);
+    let [discountCart, setDiscountCart] = useState<number>(0);
+    let [shipCart, setShipCart] = useState<number>(30);
+    let [applyCode, setApplyCode] = useState<number>(0);
 
-    cartState.cartArray.map(item => totalCart += item.price * item.quantity)
+    // Calculate total from cart items
+    useEffect(() => {
+        const total = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
+        setTotalCart(total);
+    }, [cartItems]);
 
     const handleApplyCode = (minValue: number, discount: number) => {
         if (totalCart > minValue) {
-            setApplyCode(minValue)
-            setDiscountCart(discount)
+            setApplyCode(minValue);
+            setDiscountCart(discount);
         } else {
-            alert(`Minimum order must be ${minValue}$`)
+            alert(`Minimum order must be ${minValue}$`);
         }
-    }
+    };
 
     if (totalCart < applyCode) {
-        applyCode = 0
-        discountCart = 0
+        applyCode = 0;
+        discountCart = 0;
     }
 
     if (totalCart < moneyForFreeship) {
-        shipCart = 30
+        shipCart = 30;
     }
 
-    if (cartState.cartArray.length === 0) {
-        shipCart = 0
-    }
+    useEffect(() => {
+        if (cartItems.length === 0) {
+            setShipCart(0);
+        }
+    }, [cartItems]);
 
     const redirectToCheckout = () => {
-        router.push(`/checkout?discount=${discountCart}&ship=${shipCart}`)
-    }
+        router.push(`/checkout?discount=${discountCart}&ship=${shipCart}`);
+    };
 
     return (
         <>
@@ -81,13 +80,13 @@ const Cart = () => {
                 <div className="container">
                     <div className="content-main flex justify-between max-xl:flex-col gap-y-8">
                         <div className="xl:w-2/3 xl:pr-3 w-full">
-                            <div className="time bg-green py-3 px-5 flex items-center rounded-lg">
+                            {/* <div className="time bg-green py-3 px-5 flex items-center rounded-lg">
                                 <div className="heding5">🔥</div>
                                 <div className="caption1 pl-2">Your cart will expire in
                                     <span className="min text-red text-button fw-700"> {timeLeft.minutes}:{timeLeft.seconds < 10 ? `0${timeLeft.seconds}` : timeLeft.seconds}</span>
                                     <span> minutes! Please checkout now before your items sell out!</span>
                                 </div>
-                            </div>
+                            </div> */}
                             <div className="heading banner mt-5">
                                 <div className="text">Buy
                                     <span className="text-button"> $<span className="more-price">{moneyForFreeship - totalCart > 0 ? (<>{moneyForFreeship - totalCart}</>) : (0)}</span>.00 </span>
@@ -120,56 +119,68 @@ const Cart = () => {
                                         </div>
                                     </div>
                                     <div className="list-product-main w-full mt-3">
-                                        {cartState.cartArray.length < 1 ? (
+                                        {cartItems.length < 1 ? (
                                             <p className='text-button pt-3'>No product in cart</p>
                                         ) : (
-                                            cartState.cartArray.map((product) => (
-                                                <div className="item flex md:mt-7 md:pb-7 mt-5 pb-5 border-b border-line w-full" key={product.id}>
+                                            cartItems.map((item) => (
+                                                <div className="item flex md:mt-7 md:pb-7 mt-5 pb-5 border-b border-line w-full" key={item._id}>
                                                     <div className="w-1/2">
                                                         <div className="flex items-center gap-6">
                                                             <div className="bg-img md:w-[100px] w-20 aspect-[3/4]">
-                                                                <Image
-                                                                    src={product.thumbImage[0]}
-                                                                    width={1000}
-                                                                    height={1000}
-                                                                    alt={product.name}
-                                                                    className='w-full h-full object-cover rounded-lg'
-                                                                />
+                                                                {item.productSnapshot.image ? (
+                                                                    <Image
+                                                                        src={item.productSnapshot.image}
+                                                                        width={1000}
+                                                                        height={1000}
+                                                                        alt={item.productSnapshot.name}
+                                                                        className='w-full h-full object-cover rounded-lg'
+                                                                    />
+                                                                ) : (
+                                                                    <div className='w-full h-full bg-gray-200 rounded-lg flex items-center justify-center'>
+                                                                        <Icon.Image size={32} className="text-gray-400" />
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <div>
-                                                                <div className="text-title">{product.name}</div>
-                                                                <div className="list-select mt-3"></div>
+                                                                <div className="text-title">{item.productSnapshot.name}</div>
+                                                                <div className="list-select mt-3">
+                                                                    {item.selectedAttributes.map((attr, idx) => (
+                                                                        <div key={idx} className="text-secondary text-sm">
+                                                                            {attr.name}: {attr.value}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div className="w-1/12 price flex items-center justify-center">
-                                                        <div className="text-title text-center">${product.price}.00</div>
+                                                        <div className="text-title text-center">${item.unitPrice.toFixed(2)}</div>
                                                     </div>
                                                     <div className="w-1/6 flex items-center justify-center">
                                                         <div className="quantity-block bg-surface md:p-3 p-2 flex items-center justify-between rounded-lg border border-line md:w-[100px] flex-shrink-0 w-20">
                                                             <Icon.Minus
                                                                 onClick={() => {
-                                                                    if (product.quantity > 1) {
-                                                                        handleQuantityChange(product.id, product.quantity - 1)
+                                                                    if (item.qty > 1) {
+                                                                        handleQuantityChange(item._id, item.qty - 1);
                                                                     }
                                                                 }}
-                                                                className={`text-base max-md:text-sm ${product.quantity === 1 ? 'disabled' : ''}`}
+                                                                className={`text-base max-md:text-sm cursor-pointer ${item.qty === 1 ? 'opacity-50' : ''}`}
                                                             />
-                                                            <div className="text-button quantity">{product.quantity}</div>
+                                                            <div className="text-button quantity">{item.qty}</div>
                                                             <Icon.Plus
-                                                                onClick={() => handleQuantityChange(product.id, product.quantity + 1)}
-                                                                className='text-base max-md:text-sm'
+                                                                onClick={() => handleQuantityChange(item._id, item.qty + 1)}
+                                                                className='text-base max-md:text-sm cursor-pointer'
                                                             />
                                                         </div>
                                                     </div>
                                                     <div className="w-1/6 flex total-price items-center justify-center">
-                                                        <div className="text-title text-center">${product.quantity * product.price}.00</div>
+                                                        <div className="text-title text-center">${item.totalPrice.toFixed(2)}</div>
                                                     </div>
                                                     <div className="w-1/12 flex items-center justify-center">
                                                         <Icon.XCircle
                                                             className='text-xl max-md:text-base text-red cursor-pointer hover:text-black duration-500'
                                                             onClick={() => {
-                                                                removeFromCart(product.id)
+                                                                removeItem(item._id);
                                                             }}
                                                         />
                                                     </div>
@@ -331,7 +342,7 @@ const Cart = () => {
             </div >
             <Footer />
         </>
-    )
-}
+    );
+};
 
-export default Cart
+export default Cart;

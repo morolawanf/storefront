@@ -44,10 +44,12 @@ export const useProducts = (params?: ProductListParams) => {
 /**
  * Hook to fetch a single product by ID with full details
  * Returns ProductDetail (full product data) for product detail page
+ * Shared query key with prefetch/preload for cache reuse in Quick View
  * @param id - Product ID
+ * @param options - Additional query options (e.g., retry for Quick View)
  * @returns Query result with product details
  */
-export const useProductById = (id: string) => {
+export const useProductById = (id: string, options?: { retry?: number }) => {
   return useQuery<ProductDetail>({
     queryKey: ['products', 'byId', id],
     queryFn: async () => {
@@ -59,6 +61,53 @@ export const useProductById = (id: string) => {
     },
     enabled: !!id,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: options?.retry ?? 3, // Default 3 retries, can override
+  });
+};
+
+/**
+ * Prefetch a product by ID (background fetch, no component subscription)
+ * Useful for hover/focus prefetching before Quick View opens
+ * Shares query key with useProductById for instant cache hit
+ * @param queryClient - React Query client instance
+ * @param id - Product ID to prefetch
+ */
+export const prefetchProductById = async (queryClient: any, id: string): Promise<void> => {
+  await queryClient.prefetchQuery({
+    queryKey: ['products', 'byId', id],
+    queryFn: async () => {
+      const response = await apiClient.get<ProductDetail>(api.products.byId(id));
+      if (!response.data) {
+        throw new Error('Product not found');
+      }
+      return response.data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+/**
+ * Hook to preload a product by ID on Quick View trigger
+ * Fetches with retry:0 for instant modal UX, shares cache with useProductById
+ * @param id - Product ID to preload
+ * @returns Query result optimized for Quick View (fail fast, no retries)
+ */
+export const usePreloadProductById = (id: string) => {
+  return useQuery<ProductDetail>({
+    queryKey: ['products', 'byId', id],
+    queryFn: async () => {
+      const response = await apiClient.get<ProductDetail>(api.products.byId(id));
+      if (!response.data) {
+        throw new Error('Product not found');
+      }
+      return response.data;
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 0, // Quick View: fail fast for better UX
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 };
 
@@ -113,12 +162,12 @@ export const useSearchProducts = (params: SearchProductParams) => {
  */
 /**
  * Hook to fetch products by category slug with multi-level sorting support.
- * 
+ *
  * **Features**:
  * - Automatically includes subcategory products if the category has subcategories
  * - Multi-level sorting: combine multiple sort criteria in priority order
  * - Default sort: ['alphabetical', 'newest'] - A-Z first, then by newest
- * 
+ *
  * **Sort Options** (can be combined in array):
  * - `alphabetical`: A-Z by product name
  * - `newest`: Recently added products first
@@ -128,19 +177,19 @@ export const useSearchProducts = (params: SearchProductParams) => {
  * - `order_frequency`: Most ordered products (completed orders count)
  * - `stock`: By inventory quantity (backend may be commented)
  * - `rating`: By review ratings (backend may be commented, requires Review model)
- * 
+ *
  * **Multi-Sort Logic**:
  * - Array order determines priority: `['price_asc', 'popular', 'alphabetical']`
  * - If two products have same price, sorted by popularity
  * - If same price AND popularity, sorted alphabetically
- * 
+ *
  * @param params - Category slug, pagination, and array of sort options
  * @returns Query result with products, meta includes hasSubcategories boolean
- * 
+ *
  * @example
  * // Default: alphabetical then newest
  * const { data } = useProductsByCategorySlug({ slug: 'electronics' });
- * 
+ *
  * @example
  * // Price first, then most ordered, then alphabetical
  * const { data } = useProductsByCategorySlug({
@@ -149,14 +198,14 @@ export const useSearchProducts = (params: SearchProductParams) => {
  *   page: 1,
  *   limit: 20
  * });
- * 
+ *
  * @example
  * // Trending products sorted by price
  * const { data } = useProductsByCategorySlug({
  *   slug: 'gadgets',
  *   sort: ['popular', 'price_asc']
  * });
- * 
+ *
  * @example
  * // Check if category has subcategories
  * const { data } = useProductsByCategorySlug({ slug: 'clothing' });
@@ -168,21 +217,37 @@ export const useProductsByCategorySlug = (params: CategoryBySlugParams) => {
   return useQuery<{ data: ProductListItem[]; meta: CategoryBySlugMeta }>({
     queryKey: ['products', 'byCategorySlug', params],
     queryFn: async () => {
-      const { slug, sort, ...queryParams } = params;
-      
+      const { slug, sort, attributes, specs, ...queryParams } = params;
+
       // Convert sort array to comma-separated string for URL
       const sortParam = sort && sort.length > 0 ? sort.join(',') : undefined;
-      
-      const response = await apiClient.get<ProductListItem[]>(api.products.byCategorySlug(slug), {
+
+      // Convert attributes/specs maps to backend-friendly "key:value|value2" strings
+      // Example: { Color: ['Red','Blue'], Size: ['M','L'] } -> ["Color:Red|Blue","Size:M|L"]
+      const serializeMap = (map?: Record<string, string[]>): string[] | undefined => {
+        if (!map) return undefined;
+        const entries = Object.entries(map);
+        if (!entries.length) return undefined;
+        return entries.map(([k, vals]) => `${k}:${vals.join('|')}`);
+      };
+
+      const attributeParams = serializeMap(attributes);
+      const specParams = serializeMap(specs);
+
+      const response = await apiClient.getWithMeta<ProductListItem[],CategoryBySlugMeta>(api.products.byCategorySlug(slug), {
         params: {
           ...queryParams,
           ...(sortParam && { sort: sortParam }),
+          ...(attributeParams && { attributes: attributeParams }),
+          ...(specParams && { specs: specParams }),
         },
       });
       if (!response.data) {
         throw new Error('No data returned from server');
       }
-      return response as unknown as { data: ProductListItem[]; meta: CategoryBySlugMeta };
+
+      return { data: response.data || [], meta: response.meta || { limit: 20, page: 1, pages: 0, total: 0, hasSubcategories: false, slug: '' } };
+
     },
     enabled: !!params.slug,
     staleTime: 3 * 60 * 1000, // 3 minutes - categories change less frequently

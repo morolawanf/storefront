@@ -98,7 +98,7 @@ const NavCategoriesComponent = ({ isOpen }: NavCategoriesComponentProps) => {
                                     {hoveredCategory.sub_categories.map((subCategory, idx) => (
                                         <Link
                                             key={idx}
-                                            href={`/category/${hoveredCategory.slug}/${subCategory.slug}`}
+                                            href={`/category/${subCategory.slug}`}
                                             className="group flex flex-col items-center rounded-lg p-3 duration-300 hover:bg-surface"
                                         >
                                             <div className="mb-2 h-20 w-20 overflow-hidden rounded-lg bg-surface">

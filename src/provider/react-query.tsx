@@ -93,7 +93,8 @@ export const queryKeys = {
   // Wishlist
   wishlist: {
     all: ["wishlist"] as const,
-    list: () => [...queryKeys.wishlist.all, "list"] as const,
+    list: (page?: number) => [...queryKeys.wishlist.all, "list", page ?? 1] as const,
+    count: () => [...queryKeys.wishlist.all, "count"] as const,
   },
 
   // Reviews

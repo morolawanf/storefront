@@ -217,7 +217,9 @@
                 justify-content: center;
             }
 
-            &:hover,
+            &:hover{
+                outline: 1px solid var(--black);
+            }
             &.active {
                 background-color: var(--black);
                 color: var(--white);

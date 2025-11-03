@@ -23,6 +23,7 @@ export interface ProductType {
     sizes: Array<string>,
     variation: Variation[],
     images: Array<ProductDescriptionImage>,
+    description_images: Array<ProductDescriptionImage>,
     description: string,
     action: string,
     slug: string,

@@ -1,12 +1,12 @@
-'use client'
+'use client';
 
-import React, { useState, useEffect } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
 import { usePathname } from 'next/navigation';
 import Product from '@/components/Product/Product';
-import productData from '@/data/Product.json'
+import productData from '@/data/Product.json';
 import useLoginPopup from '@/store/useLoginPopup';
 import useMenuMobile from '@/store/useMenuMobile';
 import { useModalCartContext } from '@/context/ModalCartContext';
@@ -15,24 +15,26 @@ import { useModalSearchContext } from '@/context/ModalSearchContext';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { useRouter } from 'next/navigation';
+import { useCartCount } from '@/hooks/useCartCount';
 
 
 const MenuTwo = () => {
-    const pathname = usePathname()
-    const router = useRouter()
-    const { openLoginPopup, handleLoginPopup } = useLoginPopup()
-    const { openMenuMobile, handleMenuMobile } = useMenuMobile()
-    const [openSubNavMobile, setOpenSubNavMobile] = useState<number | null>(null)
-    const { openModalCart } = useModalCartContext()
-    const { cartState } = useCart()
-    const { openModalWishlist } = useModalWishlistContext()
-    const { openModalSearch } = useModalSearchContext()
+    const pathname = usePathname();
+    const router = useRouter();
+    const { openLoginPopup, handleLoginPopup } = useLoginPopup();
+    const { openMenuMobile, handleMenuMobile } = useMenuMobile();
+    const [openSubNavMobile, setOpenSubNavMobile] = useState<number | null>(null);
+    const { openModalCart } = useModalCartContext();
+    const { cartState } = useCart();
+    const { count: cartCount } = useCartCount();
+    const { openModalWishlist } = useModalWishlistContext();
+    const { openModalSearch } = useModalSearchContext();
 
     const handleOpenSubNavMobile = (index: number) => {
-        setOpenSubNavMobile(openSubNavMobile === index ? null : index)
-    }
+        setOpenSubNavMobile(openSubNavMobile === index ? null : index);
+    };
 
-    const [fixedHeader, setFixedHeader] = useState(false)
+    const [fixedHeader, setFixedHeader] = useState(false);
     const [lastScrollPosition, setLastScrollPosition] = useState(0);
 
     useEffect(() => {
@@ -1085,7 +1087,7 @@ const MenuTwo = () => {
                                 </div>
                                 <div className="cart-icon flex items-center relative cursor-pointer" onClick={openModalCart}>
                                     <Icon.Handbag size={24} color='black' />
-                                    <span className="quantity cart-quantity absolute -right-1.5 -top-1.5 text-xs text-white bg-black w-4 h-4 flex items-center justify-center rounded-full">{cartState.cartArray.length}</span>
+                                    <span className="quantity cart-quantity absolute -right-1.5 -top-1.5 text-xs text-white bg-black w-4 h-4 flex items-center justify-center rounded-full">{cartCount}</span>
                                 </div>
                             </div>
                         </div>
@@ -2097,7 +2099,7 @@ const MenuTwo = () => {
                 </div>
             </div>
         </>
-    )
-}
+    );
+};
 
-export default MenuTwo
+export default MenuTwo;

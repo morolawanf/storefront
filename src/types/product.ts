@@ -215,11 +215,27 @@ export interface CategoryBySlugParams {
    * @example ['order_frequency', 'newest']
    */
   sort?: SortOption[];
+  // Filters
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+  packSize?: string;
+  tags?: string[];
+  includeStats?: boolean;
+  // Frontend-friendly filter maps: AttributeName -> values, SpecKey -> values
+  attributes?: Record<string, string[]>;
+  specs?: Record<string, string[]>;
+  // Restrict to a direct child subcategory slug
+  subcategory?: string;
 }
 
 export interface CategoryBySlugMeta extends ProductListMeta {
   slug: string;
   hasSubcategories: boolean;
+  limit: number;
+  page: number;
+  pages: number;
+  total: number;
 }
 
 export interface TopCategory {
@@ -241,4 +257,16 @@ export interface AutocompleteProduct {
     name: string;
     slug: string;
   };
+}
+
+// Category Filters response for building dynamic filter UIs on category page
+export interface CategoryFiltersResponse {
+  priceRange: { min: number; max: number };
+  attributes: Array<{
+    name: string;
+    values: Array<{ value: string; count: number; colorCode?: string }>;
+  }>;
+  specifications: Array<{ key: string; values: Array<{ value: string; count: number }> }>;
+  tags: Array<{ value: string; count: number }>;
+  packSizes: Array<{ label: string; count: number }>;
 }

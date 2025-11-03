@@ -1,43 +1,45 @@
-'use client'
+'use client';
 
-import React, { useState, useEffect } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
 import { usePathname } from 'next/navigation';
 import Product from '@/components/Product/Product';
-import productData from '@/data/Product.json'
+import productData from '@/data/Product.json';
 import useLoginPopup from '@/store/useLoginPopup';
 import useShopDepartmentPopup from '@/store/useShopDepartmentPopup';
 import useMenuMobile from '@/store/useMenuMobile';
 import { useModalCartContext } from '@/context/ModalCartContext';
 import { useModalWishlistContext } from '@/context/ModalWishlistContext';
 import { useCart } from '@/context/CartContext';
+import { useCartCount } from '@/hooks/useCartCount';
 
 const MenuEleven = () => {
-    const pathname = usePathname()
-    const { openLoginPopup, handleLoginPopup } = useLoginPopup()
-    const { openShopDepartmentPopup, handleShopDepartmentPopup } = useShopDepartmentPopup()
-    const { openMenuMobile, handleMenuMobile } = useMenuMobile()
-    const [openSubNavMobile, setOpenSubNavMobile] = useState<number | null>(null)
-    const { openModalCart } = useModalCartContext()
-    const { cartState } = useCart()
-    const { openModalWishlist } = useModalWishlistContext()
+    const pathname = usePathname();
+    const { openLoginPopup, handleLoginPopup } = useLoginPopup();
+    const { openShopDepartmentPopup, handleShopDepartmentPopup } = useShopDepartmentPopup();
+    const { openMenuMobile, handleMenuMobile } = useMenuMobile();
+    const [openSubNavMobile, setOpenSubNavMobile] = useState<number | null>(null);
+    const { openModalCart } = useModalCartContext();
+    const { cartState } = useCart();
+    const { count: cartCount } = useCartCount();
+    const { openModalWishlist } = useModalWishlistContext();
 
     const [searchKeyword, setSearchKeyword] = useState('');
-    const router = useRouter()
+    const router = useRouter();
 
     const handleSearch = (value: string) => {
-        router.push(`/search-result?query=${value}`)
-        setSearchKeyword('')
-    }
+        router.push(`/search-result?query=${value}`);
+        setSearchKeyword('');
+    };
 
     const handleOpenSubNavMobile = (index: number) => {
-        setOpenSubNavMobile(openSubNavMobile === index ? null : index)
-    }
+        setOpenSubNavMobile(openSubNavMobile === index ? null : index);
+    };
 
-    const [fixedHeader, setFixedHeader] = useState(false)
+    const [fixedHeader, setFixedHeader] = useState(false);
     const [lastScrollPosition, setLastScrollPosition] = useState(0);
 
     useEffect(() => {
@@ -99,7 +101,7 @@ const MenuEleven = () => {
                                     <button
                                         className="search-button button-main bg-black h-full flex items-center px-7 rounded-none rounded-r"
                                         onClick={() => {
-                                            handleSearch(searchKeyword)
+                                            handleSearch(searchKeyword);
                                         }}
                                     >
                                         Search
@@ -127,7 +129,7 @@ const MenuEleven = () => {
                                     </div>
                                     <div className="cart-icon flex items-center relative cursor-pointer" onClick={openModalCart}>
                                         <Icon.Handbag size={24} color='black' />
-                                        <span className="quantity cart-quantity absolute -right-1.5 -top-1.5 text-xs text-white bg-black w-4 h-4 flex items-center justify-center rounded-full">{cartState.cartArray.length}</span>
+                                        <span className="quantity cart-quantity absolute -right-1.5 -top-1.5 text-xs text-white bg-black w-4 h-4 flex items-center justify-center rounded-full">{cartCount}</span>
                                     </div>
                                 </div>
                             </div>
@@ -2183,7 +2185,7 @@ const MenuEleven = () => {
                 </div>
             </div>
         </>
-    )
-}
+    );
+};
 
-export default MenuEleven
+export default MenuEleven;

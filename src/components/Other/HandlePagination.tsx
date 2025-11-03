@@ -1,14 +1,15 @@
-'use client'
+'use client';
 
 import React from 'react';
 import ReactPaginate from 'react-paginate';
 
 interface Props {
-    pageCount: number
+    pageCount: number;
     onPageChange: (selected: number) => void;
+    initialPage?: number; // 0-based page index
 }
 
-const HandlePagination: React.FC<Props> = ({ pageCount, onPageChange }) => {
+const HandlePagination: React.FC<Props> = ({ pageCount, onPageChange, initialPage }) => {
     return (
         <ReactPaginate
             previousLabel="<"
@@ -17,6 +18,7 @@ const HandlePagination: React.FC<Props> = ({ pageCount, onPageChange }) => {
             pageRangeDisplayed={3}
             marginPagesDisplayed={2}
             onPageChange={(selectedItem) => onPageChange(selectedItem.selected)}
+            forcePage={initialPage}
             containerClassName={'pagination'}
             activeClassName={'active'}
         />

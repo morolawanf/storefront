@@ -1,17 +1,18 @@
-'use client'
+'use client';
 
-import React, { useState, useEffect } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
-import productData from '@/data/Product.json'
+import productData from '@/data/Product.json';
 import { ProductType } from '@/type/ProductType';
-import { useModalCartContext } from '@/context/ModalCartContext'
-import { useCart } from '@/context/CartContext'
-import { countdownTime } from '@/store/countdownTime'
+import { useModalCartContext } from '@/context/ModalCartContext';
+import { countdownTime } from '@/store/countdownTime';
 import CountdownTimeType from '@/type/CountdownType';
+import { useGuestCart, useGuestCartCount } from '@/hooks/useGuestCart';
+import { getCdnUrl } from '@/libs/cdn-url';
 
-const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType }) => {
+const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType; }) => {
     const [timeLeft, setTimeLeft] = useState(serverTimeLeft);
 
     useEffect(() => {
@@ -22,35 +23,33 @@ const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType }) =>
         return () => clearInterval(timer);
     }, []);
 
-    const [activeTab, setActiveTab] = useState<string | undefined>('')
+    const [activeTab, setActiveTab] = useState<string | undefined>('');
     const { isModalOpen, closeModalCart } = useModalCartContext();
-    const { cartState, addToCart, removeFromCart, updateCart } = useCart()
+
+    // Use localStorage cart (guest cart) for current session
+    const { items: cartItems, removeItem } = useGuestCart();
+    const { count: cartCount } = useGuestCartCount();
 
     const handleAddToCart = (productItem: ProductType) => {
-        if (!cartState.cartArray.find(item => item.id === productItem.id)) {
-            addToCart({ ...productItem });
-            updateCart(productItem.id, productItem.quantityPurchase, '', '')
-        } else {
-            updateCart(productItem.id, productItem.quantityPurchase, '', '')
-        }
+        // This is for "You May Also Like" section - can be implemented later if needed
+        console.log('Add to cart from modal:', productItem);
     };
 
     const handleActiveTab = (tab: string) => {
-        setActiveTab(tab)
-    }
+        setActiveTab(tab);
+    };
 
     let moneyForFreeship = 150;
-    let [totalCart, setTotalCart] = useState<number>(0)
-    let [discountCart, setDiscountCart] = useState<number>(0)
 
-    cartState.cartArray.map(item => totalCart += item.price * item.quantity)
+    // Calculate total from localStorage cart items
+    const totalCart = cartItems.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
 
     return (
         <>
             <div className={`modal-cart-block`} onClick={closeModalCart}>
                 <div
                     className={`modal-cart-main flex ${isModalOpen ? 'open' : ''}`}
-                    onClick={(e) => { e.stopPropagation() }}
+                    onClick={(e) => { e.stopPropagation(); }}
                 >
                     <div className="left w-1/2 border-r border-line py-6 max-md:hidden">
                         <div className="heading5 px-6 pb-3">You May Also Like</div>
@@ -99,14 +98,14 @@ const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType }) =>
                                 <Icon.X size={14} />
                             </div>
                         </div>
-                        <div className="time px-6">
+                        {/* <div className="time px-6">
                             <div className=" flex items-center gap-3 px-5 py-3 bg-green rounded-lg">
                                 <p className='text-3xl'>🔥</p>
                                 <div className="caption1">Your cart will expire in <span className='text-red caption1 font-semibold'>{timeLeft.minutes}:
                                     {timeLeft.seconds < 10 ? `0${timeLeft.seconds}` : timeLeft.seconds}</span> minutes!<br />
                                     Please checkout now before your items sell out!</div>
                             </div>
-                        </div>
+                        </div> */}
                         <div className="heading banner mt-3 px-6">
                             <div className="text">Buy <span className="text-button"> $<span className="more-price">{moneyForFreeship - totalCart > 0 ? (<>{moneyForFreeship - totalCart}</>) : (0)}</span>.00 </span>
                                 <span>more to get </span>
@@ -119,38 +118,50 @@ const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType }) =>
                             </div>
                         </div>
                         <div className="list-product px-6">
-                            {cartState.cartArray.map((product) => (
-                                <div key={product.id} className='item py-5 flex items-center justify-between gap-3 border-b border-line'>
-                                    <div className="infor flex items-center gap-3 w-full">
-                                        <div className="bg-img w-[100px] aspect-square flex-shrink-0 rounded-lg overflow-hidden">
-                                            <Image
-                                                src={product.images.find(img => img.cover_image)?.url!}
-                                                width={300}
-                                                height={300}
-                                                alt={product.name}
-                                                className='w-full h-full'
-                                            />
-                                        </div>
-                                        <div className='w-full'>
-                                            <div className="flex items-center justify-between w-full">
-                                                <div className="name text-button">{product.name}</div>
-                                                <div
-                                                    className="remove-cart-btn caption1 font-semibold text-red underline cursor-pointer"
-                                                    onClick={() => removeFromCart(product.id)}
-                                                >
-                                                    Remove
-                                                </div>
+                            {cartItems.length === 0 ? (
+                                <div className="text-center py-10 text-secondary">
+                                    <Icon.ShoppingCart className="text-5xl mx-auto mb-3" />
+                                    <p className="text-button">Your cart is empty</p>
+                                </div>
+                            ) : (
+                                cartItems.map((item) => (
+                                    <div key={item._id} className='item py-5 flex items-center justify-between gap-3 border-b border-line'>
+                                        <div className="infor flex items-center gap-3 w-full">
+                                            <div className="bg-img w-[100px] aspect-square flex-shrink-0 rounded-lg overflow-hidden">
+                                                <Image
+                                                    src={getCdnUrl(item.productSnapshot.name) || '/images/placeholder.png'}
+                                                    width={300}
+                                                    height={300}
+                                                    alt={item.productSnapshot.name}
+                                                    className='w-full h-full object-cover'
+                                                />
                                             </div>
-                                            <div className="flex items-center justify-between gap-2 mt-3 w-full">
-                                                <div className="flex items-center text-secondary2 capitalize">
-                                                    {product.selectedSize || product.sizes[0]}/{product.selectedColor || product.variation[0].color}
+                                            <div className='w-full'>
+                                                <div className="flex items-center justify-between w-full">
+                                                    <div className="name text-button">{item.productSnapshot.name}</div>
+                                                    <div
+                                                        className="remove-cart-btn caption1 font-semibold text-red underline cursor-pointer"
+                                                        onClick={() => removeItem(item._id)}
+                                                    >
+                                                        Remove
+                                                    </div>
                                                 </div>
-                                                <div className="product-price text-title">${product.price}.00</div>
+                                                <div className="flex items-center justify-between gap-2 mt-3 w-full">
+                                                    <div className="flex items-center gap-2 text-secondary2 capitalize">
+                                                        <span>Qty: {item.qty}</span>
+                                                        {item.selectedAttributes.length > 0 && (
+                                                            <span className="text-xs">
+                                                                ({item.selectedAttributes.map(attr => attr.value).join(', ')})
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="product-price text-title">${item.unitPrice.toFixed(2)}</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                         <div className="footer-modal bg-white absolute bottom-0 left-0 w-full">
                             <div className="flex items-center justify-center lg:gap-14 gap-8 px-6 py-4 border-b border-line">
@@ -178,7 +189,7 @@ const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType }) =>
                             </div>
                             <div className="flex items-center justify-between pt-6 px-6">
                                 <div className="heading5">Subtotal</div>
-                                <div className="heading5">${totalCart}.00</div>
+                                <div className="heading5">${totalCart.toFixed(2)}</div>
                             </div>
                             <div className="block-button text-center p-6">
                                 <div className="flex items-center gap-4">
@@ -291,7 +302,7 @@ const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType }) =>
                 </div>
             </div>
         </>
-    )
-}
+    );
+};
 
-export default ModalCart
+export default ModalCart;

@@ -28,7 +28,7 @@ export const api = {
     byCategorySlug: (slug: string) => `/products/category/${slug}`,
     search: '/products/search',
     autocomplete: '/products/autocomplete',
-    newProducts: '/products/new-products', 
+    newProducts: '/products/new-products',
     week: '/products/top-week',
     topSold: '/products/top-sold',
     hotSales: '/products/hot-sales',
@@ -42,9 +42,12 @@ export const api = {
   // Cart endpoints
   cart: {
     get: '/cart',
-    item: (itemId: string) => `/cart/${itemId}`,
-    sync: '/cart/sync',
+    add: '/cart/add',
+    item: (itemId: string) => `/cart/item/${itemId}`,
     clear: '/cart/clear',
+    validateSales: '/cart/validate-sales',
+    coupon: '/cart/coupon',
+    removeCoupon: (couponId: string) => `/cart/coupon/${couponId}`,
   },
 
   // Order endpoints
@@ -74,9 +77,10 @@ export const api = {
 
   // Wishlist endpoints
   wishlist: {
-    get: '/wishlist',
+    list: '/wishlist/all',
+    count: '/wishlist/count',
     add: '/wishlist/add',
-    remove: (productId: string) => `/wishlist/remove/${productId}`,
+    remove: (wishlistItemId: string) => `/wishlist/remove/${wishlistItemId}`,
   },
 
   // Review endpoints
@@ -91,6 +95,8 @@ export const api = {
   categories: {
     list: '/categories',
     byId: (id: string) => `/categories/${id}`,
+    bySlug: (slug: string) => `/categories/slug/${slug}`,
+    filtersBySlug: (slug: string) => `/categories/slug/${slug}/filters`,
   },
 
   // Banner endpoints
