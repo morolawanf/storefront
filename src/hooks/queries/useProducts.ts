@@ -15,6 +15,7 @@ import {
   CategoryBySlugParams,
   CategoryBySlugMeta,
   TopCategory,
+  CategoryFiltersResponse,
 } from '@/types/product';
 
 /**
@@ -234,20 +235,32 @@ export const useProductsByCategorySlug = (params: CategoryBySlugParams) => {
       const attributeParams = serializeMap(attributes);
       const specParams = serializeMap(specs);
 
-      const response = await apiClient.getWithMeta<ProductListItem[],CategoryBySlugMeta>(api.products.byCategorySlug(slug), {
-        params: {
-          ...queryParams,
-          ...(sortParam && { sort: sortParam }),
-          ...(attributeParams && { attributes: attributeParams }),
-          ...(specParams && { specs: specParams }),
-        },
-      });
+      const response = await apiClient.getWithMeta<ProductListItem[], CategoryBySlugMeta>(
+        api.products.byCategorySlug(slug),
+        {
+          params: {
+            ...queryParams,
+            ...(sortParam && { sort: sortParam }),
+            ...(attributeParams && { attributes: attributeParams }),
+            ...(specParams && { specs: specParams }),
+          },
+        }
+      );
       if (!response.data) {
         throw new Error('No data returned from server');
       }
 
-      return { data: response.data || [], meta: response.meta || { limit: 20, page: 1, pages: 0, total: 0, hasSubcategories: false, slug: '' } };
-
+      return {
+        data: response.data || [],
+        meta: response.meta || {
+          limit: 20,
+          page: 1,
+          pages: 0,
+          total: 0,
+          hasSubcategories: false,
+          slug: '',
+        },
+      };
     },
     enabled: !!params.slug,
     staleTime: 3 * 60 * 1000, // 3 minutes - categories change less frequently
@@ -451,5 +464,84 @@ export const useProductSearchAutocomplete = (query: string, limit = 10) => {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+  });
+};
+
+/**
+ * Hook to fetch full product search results with filters (used for /search-result page)
+ * Returns ProductListItem[] (full product data for grid display) instead of minimal SearchProduct
+ * @param params - Search query and filter parameters matching category page filters
+ * @returns Query result with products and pagination metadata
+ */
+export const useSearchResultProducts = (params: {
+  query?: string;
+  page?: number;
+  limit?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+  packSize?: string;
+  tags?: string[];
+  attributes?: Record<string, string[]>;
+  sortBy?: 'price' | 'name' | 'createdAt' | 'rating' | 'sales';
+  sortOrder?: 'asc' | 'desc';
+}) => {
+  return useQuery<{ data: ProductListItem[]; meta: ProductListMeta }>({
+    queryKey: ['products', 'searchResults', params],
+    queryFn: async () => {
+      // Convert attributes map to backend-friendly "key:value|value2" strings
+      const serializeMap = (map?: Record<string, string[]>): string[] | undefined => {
+        if (!map) return undefined;
+        const entries = Object.entries(map);
+        if (!entries.length) return undefined;
+        return entries.map(([k, vals]) => `${k}:${vals.join('|')}`);
+      };
+
+      const attributeParams = serializeMap(params.attributes);
+
+      const response = await apiClient.get<ProductListItem[]>(api.products.searchResults, {
+        params: {
+          q: params.query,
+          page: params.page,
+          limit: params.limit,
+          minPrice: params.minPrice,
+          maxPrice: params.maxPrice,
+          inStock: params.inStock,
+          packSize: params.packSize,
+          tags: params.tags,
+          ...(attributeParams && { attributes: attributeParams }),
+          sortBy: params.sortBy,
+          sortOrder: params.sortOrder,
+        },
+      });
+      if (!response.data) {
+        throw new Error('No data returned from server');
+      }
+      return response as unknown as { data: ProductListItem[]; meta: ProductListMeta };
+    },
+    staleTime: 1 * 60 * 1000, // 1 minute
+  });
+};
+
+/**
+ * Hook to fetch available filters for search results
+ * Returns aggregated filter options based on current search query
+ * @param params - Search query to get filters for
+ * @returns Query result with available filters
+ */
+export const useSearchResultFilters = (params: { query?: string }) => {
+  return useQuery<CategoryFiltersResponse>({
+    queryKey: ['products', 'searchFilters', params],
+    queryFn: async () => {
+      const response = await apiClient.get<CategoryFiltersResponse>(api.products.searchFilters, {
+        params: { q: params.query },
+      });
+      if (!response.data) {
+        throw new Error('No filters returned from server');
+      }
+      return response.data;
+    },
+    enabled: params.query !== undefined, // Allow empty string for all products
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };

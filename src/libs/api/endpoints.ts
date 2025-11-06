@@ -28,6 +28,8 @@ export const api = {
     byCategorySlug: (slug: string) => `/products/category/${slug}`,
     byCampaignSlug: (slug: string) => `/products/campaign/${slug}`,
     search: '/products/search',
+    searchResults: '/products/search-results', // Full product data for search results page
+    searchFilters: '/products/search-filters', // Aggregated filters for search results
     autocomplete: '/products/autocomplete',
     newProducts: '/products/new-products',
     newProductsFilters: '/products/new-products/filters',
