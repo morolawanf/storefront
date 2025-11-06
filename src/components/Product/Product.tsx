@@ -306,7 +306,8 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
         <>
             {type === "grid" ? (
                 <div className={`product-item grid-type ${colors.length > 0 ? 'has-colors' : ''}`}>
-                    <div onClick={() => handleDetailProduct(data.id)} className="product-main cursor-pointer block">
+                    {/* <Link href={`/product/${data.slug}`} className="product-main cursor-pointer block"> */}
+                    <div className="product-main cursor-pointer block">
                         <div className="product-thumb bg-white relative overflow-hidden rounded-2xl  outline outline-1 outline-line">
                             {isNewProduct && (
                                 <div className="product-tag text-button-uppercase bg-green px-3 py-0.5 inline-block rounded-full absolute top-3 left-3 z-[1]">
@@ -351,7 +352,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                     <Icon.CheckCircle size={20} className='checked-icon' />
                                 </div>
                             </div>
-                            <div className="product-img w-full h-full aspect-[3/4]">
+                            <Link href={`/product/${data.slug}`} className="product-img w-full h-full aspect-[3/4] block">
                                 <Image
                                     src={getCdnUrl(data.images ? data.images.find((img) => img.cover_image)?.url : data.description_images.find((img) => img.cover_image)?.url || '')}
                                     width={500}
@@ -382,7 +383,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                         }
                                     </>
                                 )} */}
-                            </div>
+                            </Link>
                             {showSaleMarquee && (
                                 <>
                                     <Marquee className='banner-sale-auto bg-black absolute bottom-0 left-0 w-full py-1.5'>
@@ -506,7 +507,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                 </div>
                             )}
                             <div className='w-full relative '>
-                                <div className="product-name text-title duration-300">{data.name}</div>
+                                <Link href={`/product/${data.slug}`} className="product-name text-title duration-300 hover-underline-animation cursor-pointer">{data.name}</Link>
                                 {colors.length > 0 && (
                                     <div className="list-color py-2 max-md:hidden flex items-center gap-3 flex-wrap duration-500">
                                         {colors.map((item, index) => (

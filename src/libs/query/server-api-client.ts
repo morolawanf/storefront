@@ -51,7 +51,6 @@ export async function serverGet<T>(url: string): Promise<T | null> {
   }
 }
 
-
 /**
  * Server-side typed GET request with meta
  * Automatically unwraps response.data.data → response.data
@@ -76,7 +75,7 @@ const createAuthenticatedClient = (token: string) => {
     timeout: 30000,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     },
     validateStatus: (status) => status >= 200 && status < 400,
   });

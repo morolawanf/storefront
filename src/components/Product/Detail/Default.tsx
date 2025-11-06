@@ -18,6 +18,7 @@ import { useModalWishlistContext } from '@/context/ModalWishlistContext'
 import { useCompare } from '@/context/CompareContext'
 import { useModalCompareContext } from '@/context/ModalCompareContext'
 import ModalSizeguide from '@/components/Modal/ModalSizeguide'
+import { getCdnUrl } from '@/libs/cdn-url'
 
 SwiperCore.use([Navigation, Thumbs]);
 
@@ -156,7 +157,7 @@ const Default: React.FC<Props> = ({ data, productId }) => {
                                         }}
                                     >
                                         <Image
-                                            src={item}
+                                            src={getCdnUrl(item.url)}
                                             width={1000}
                                             height={1000}
                                             alt='prd-img'
@@ -181,7 +182,7 @@ const Default: React.FC<Props> = ({ data, productId }) => {
                                         key={index}
                                     >
                                         <Image
-                                            src={item}
+                                            src={getCdnUrl(item.url)}
                                             width={1000}
                                             height={1000}
                                             alt='prd-img'
@@ -218,7 +219,7 @@ const Default: React.FC<Props> = ({ data, productId }) => {
                                             }}
                                         >
                                             <Image
-                                                src={item}
+                                                src={getCdnUrl(item.url)}
                                                 width={1000}
                                                 height={1000}
                                                 alt='prd-img'
@@ -379,7 +380,7 @@ const Default: React.FC<Props> = ({ data, productId }) => {
                                     </div>
                                     <div className="flex items-center gap-1 mt-3">
                                         <div className="text-title">Categories:</div>
-                                        <div className="text-secondary">{productMain.category}, {productMain.gender}</div>
+                                        <div className="text-secondary">{productMain.category.name}, {productMain.gender}</div>
                                     </div>
                                     <div className="flex items-center gap-1 mt-3">
                                         <div className="text-title">Tag:</div>

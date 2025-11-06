@@ -1,14 +1,15 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import TopNavOne from '@/components/Header/TopNav/TopNavOne';
 import MenuOne from '@/components/Header/Menu/MenuOne';
 import BreadcrumbProduct from '@/components/Breadcrumb/BreadcrumbProduct';
-import CountdownTimer from '@/components/Product/Detail/CountdownTimer';
+import Sale from '@/components/Product/Detail/MainProduct';
 import Footer from '@/components/Footer/Footer';
 import productData from '@/data/Product.json';
 
-const ProductTwoScrolling = () => {
+const ProductThumbnailBottom = () => {
     const searchParams = useSearchParams();
     let productId = searchParams.get('id');
 
@@ -18,13 +19,11 @@ const ProductTwoScrolling = () => {
 
     return (
         <>
-            <div id="header" className='relative w-full'>
-            </div>
-            <BreadcrumbProduct data={productData} productPage='countdown-timer' productId={productId} />
-            <CountdownTimer data={productData} productId={productId} />
+            {/* <BreadcrumbProduct data={productData} productPage='sale' productId={productId} /> */}
+            <Sale data={productData} productId={productId} />
             <Footer />
         </>
     );
 };
 
-export default ProductTwoScrolling;
+export default ProductThumbnailBottom;

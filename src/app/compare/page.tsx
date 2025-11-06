@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import TopNavOne from '@/components/Header/TopNav/TopNavOne'
@@ -14,6 +14,8 @@ import { useCompare } from '@/context/CompareContext'
 import { useCart } from '@/context/CartContext'
 import { useModalCartContext } from '@/context/ModalCartContext'
 import Rate from '@/components/Other/Rate'
+import { getCdnUrl } from '@/libs/cdn-url'
+import type { ProductSpecification, ProductDimension } from '@/types/product'
 
 const Compare = () => {
     const { compareState } = useCompare();
@@ -29,6 +31,52 @@ const Compare = () => {
         }
         openModalCart()
     };
+
+    // Helper: pick best image for compare – prefer description_images cover, then first description image,
+    // then cover from images, then first image. Returns raw URL (to be wrapped with getCdnUrl).
+    const selectCompareImage = (product: ProductType): string => {
+        const descCover = product.description_images?.find((img) => img.cover_image)?.url
+        if (descCover) return descCover
+        const firstDesc = product.description_images?.[0]?.url
+        if (firstDesc) return firstDesc
+        const imagesCover = product.images?.find((img) => img.cover_image)?.url
+        if (imagesCover) return imagesCover
+        return product.images?.[0]?.url ?? ''
+    }
+
+    // Narrow types to include optional specs and dimensions without changing global ProductType
+    type WithSpecsDims = {
+        specifications?: ProductSpecification[];
+        dimension?: ProductDimension[];
+    };
+
+    const products = compareState.compareArray as Array<ProductType & WithSpecsDims>;
+
+    const normalizeKey = (s: string) => s.trim().toLowerCase();
+
+    // Build merged specification rows
+    const specKeyToLabel = new Map<string, string>();
+    products.forEach(p => (p.specifications ?? []).forEach(spec => {
+        const norm = normalizeKey(spec.key);
+        if (!specKeyToLabel.has(norm)) specKeyToLabel.set(norm, spec.key);
+    }));
+    const mergedSpecs = Array.from(specKeyToLabel.entries()).map(([norm, label]) => ({
+        label,
+        values: products.map(p => (p.specifications ?? []).find(s => normalizeKey(s.key) === norm)?.value ?? ''),
+    }));
+
+    // Build merged dimension rows
+    const dimOrder: Array<ProductDimension['key']> = ['length', 'breadth', 'height', 'volume', 'width', 'weight'];
+    const dimKeysSet = new Set<string>();
+    products.forEach(p => (p.dimension ?? []).forEach(d => dimKeysSet.add(d.key)));
+    const orderedDimKeys = [
+        ...dimOrder.filter(k => dimKeysSet.has(k)),
+        ...Array.from(dimKeysSet).filter(k => !dimOrder.includes(k as ProductDimension['key'])),
+    ];
+    const mergedDims = orderedDimKeys.map(key => ({
+        key,
+        values: products.map(p => (p.dimension ?? []).find(d => d.key === key)?.value ?? ''),
+    }));
 
     return (
         <>
@@ -48,10 +96,10 @@ const Compare = () => {
                                         <div className="product-item px-10 pt-6 pb-5 border-r border-line" key={item.id}>
                                             <div className="bg-img w-full aspect-[3/4] rounded-lg overflow-hidden flex-shrink-0">
                                                 <Image
-                                                    src={item.images[0]}
+                                                    src={getCdnUrl(selectCompareImage(item))}
                                                     width={1000}
                                                     height={1500}
-                                                    alt={item.images[0]}
+                                                    alt={item.name}
                                                     className='w-full h-full object-cover'
                                                 />
                                             </div>
@@ -71,6 +119,18 @@ const Compare = () => {
                                     <div className="item text-button flex items-center h-[60px] px-8 w-full border-b border-line">Colors</div>
                                     <div className="item text-button flex items-center h-[60px] px-8 w-full border-b border-line">Metarial</div>
                                     <div className="item text-button flex items-center h-[60px] px-8 w-full border-b border-line">Add To Cart</div>
+                                    {/* Dynamic Specifications */}
+                                    {mergedSpecs.map((row) => (
+                                        <div key={`spec-left-${row.label}`} className="item text-button flex items-center h-[60px] px-8 w-full border-b border-line">
+                                            {row.label}
+                                        </div>
+                                    ))}
+                                    {/* Dynamic Dimensions */}
+                                    {mergedDims.map((row) => (
+                                        <div key={`dim-left-${row.key}`} className="item text-button flex items-center h-[60px] px-8 w-full border-b border-line capitalize">
+                                            {row.key}
+                                        </div>
+                                    ))}
                                 </div>
                                 <table className="right border-collapse w-full border-t border-r border-line">
                                     <tr className={`flex w-full items-center`}>
@@ -131,7 +191,7 @@ const Compare = () => {
                                                         <span
                                                             key={i}
                                                             className={`w-6 h-6 rounded-full`}
-                                                            style={{backgroundColor: `${colorItem.colorCode}`}}
+                                                            style={{ backgroundColor: `${colorItem.colorCode}` }}
                                                         ></span>
                                                     ))}
                                                 </div>
@@ -156,6 +216,30 @@ const Compare = () => {
                                             </td>
                                         ))}
                                     </tr>
+                                    {/* Dynamic Specification rows */}
+                                    {mergedSpecs.map((row, rIdx) => (
+                                        <tr key={`spec-row-${rIdx}`} className={`flex w-full items-center`}>
+                                            {row.values.map((val, cIdx) => (
+                                                <td key={cIdx} className="w-full border border-line h-[60px] border-t-0 border-r-0">
+                                                    <div className='h-full flex items-center justify-center'>
+                                                        {val || '-'}
+                                                    </div>
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                    {/* Dynamic Dimension rows */}
+                                    {mergedDims.map((row, rIdx) => (
+                                        <tr key={`dim-row-${rIdx}`} className={`flex w-full items-center`}>
+                                            {row.values.map((val, cIdx) => (
+                                                <td key={cIdx} className="w-full border border-line h-[60px] border-t-0 border-r-0">
+                                                    <div className='h-full flex items-center justify-center capitalize'>
+                                                        {val || '-'}
+                                                    </div>
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
                                 </table>
                             </div>
                         </div>

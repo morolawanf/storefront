@@ -2,7 +2,12 @@ import { useMutation, useQueryClient, UseMutationResult } from '@tanstack/react-
 import { apiClient } from '@/libs/api/axios';
 import api from '@/libs/api/endpoints';
 import { queryKeys } from '@/provider/react-query';
-import { WishlistItem, WishlistMeta, AddToWishlistInput, OptimisticWishlistProduct } from '@/types/wishlist';
+import {
+  WishlistItem,
+  WishlistMeta,
+  AddToWishlistInput,
+  OptimisticWishlistProduct,
+} from '@/types/wishlist';
 
 /**
  * Add product to wishlist mutation
@@ -12,12 +17,20 @@ export const useAddToWishlist = (): UseMutationResult<
   null,
   Error,
   { productId: string; product: OptimisticWishlistProduct },
-  { previousData: { data: WishlistItem[]; meta: WishlistMeta } | undefined; previousCount: number | undefined }
+  {
+    previousData: { data: WishlistItem[]; meta: WishlistMeta } | undefined;
+    previousCount: number | undefined;
+  }
 > => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ productId }: { productId: string; product: OptimisticWishlistProduct }) => {
+    mutationFn: async ({
+      productId,
+    }: {
+      productId: string;
+      product: OptimisticWishlistProduct;
+    }) => {
       const input: AddToWishlistInput = { product: productId };
       const response = await apiClient.post<null>(api.wishlist.add, input);
       return response.data;
@@ -93,7 +106,10 @@ export const useRemoveFromWishlist = (): UseMutationResult<
   null,
   Error,
   string,
-  { previousData: { data: WishlistItem[]; meta: WishlistMeta } | undefined; previousCount: number | undefined }
+  {
+    previousData: { data: WishlistItem[]; meta: WishlistMeta } | undefined;
+    previousCount: number | undefined;
+  }
 > => {
   const queryClient = useQueryClient();
 
@@ -131,7 +147,10 @@ export const useRemoveFromWishlist = (): UseMutationResult<
 
       // Decrement count cache
       if (typeof previousCount === 'number') {
-        queryClient.setQueryData<number>(queryKeys.wishlist.count(), Math.max(0, previousCount - 1));
+        queryClient.setQueryData<number>(
+          queryKeys.wishlist.count(),
+          Math.max(0, previousCount - 1)
+        );
       }
 
       // Return snapshot for rollback

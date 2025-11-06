@@ -1,11 +1,25 @@
 'use client'
 
-import React, { useState } from 'react'
+import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import * as Icon from "@phosphor-icons/react/dist/ssr";
 import { useModalCompareContext } from '@/context/ModalCompareContext'
 import { useCompare } from '@/context/CompareContext'
+import { ProductType } from '@/type/ProductType'
+import { getCdnUrl } from '@/libs/cdn-url'
+
+// Helper: pick best image for compare – prefer description_images cover, then first description image,
+// then cover from images, then first image. Returns raw URL (to be wrapped with getCdnUrl).
+const selectCompareImage = (product: ProductType): string => {
+    const descCover = product.description_images?.find((img) => img.cover_image)?.url
+    if (descCover) return descCover
+    const firstDesc = product.description_images?.[0]?.url
+    if (firstDesc) return firstDesc
+    const imagesCover = product.images?.find((img) => img.cover_image)?.url
+    if (imagesCover) return imagesCover
+    return product.images?.[0]?.url ?? ''
+}
 
 const ModalCompare = () => {
     const { isModalOpen, closeModalCompare } = useModalCompareContext();
@@ -28,12 +42,12 @@ const ModalCompare = () => {
                         <div className="content-main flex items-center justify-between xl:gap-10 gap-6 w-full max-md:flex-wrap">
                             <div className="heading5 flex-shrink-0 max-md:w-full">Compare <br className='max-md:hidden' />Products</div>
                             <div className="list-product flex items-center w-full gap-4">
-                                {compareState.compareArray.slice(0, 3).map((product) => (
+                                {compareState.compareArray.slice(0, 3).map((product: ProductType) => (
                                     <div key={product.id} className='item p-3 border border-line rounded-xl relative'>
                                         <div className="infor flex items-center gap-4">
                                             <div className="bg-img w-[100px] h-[100px] flex-shrink-0 rounded-lg overflow-hidden">
                                                 <Image
-                                                    src={product.images[0]}
+                                                    src={getCdnUrl(selectCompareImage(product))}
                                                     width={500}
                                                     height={500}
                                                     alt={product.name}
@@ -52,30 +66,28 @@ const ModalCompare = () => {
                                 ))}
                             </div>
                             <div className="block-button flex flex-col gap-4 flex-shrink-0">
-                                {
-                                    compareState.compareArray.length < 2 ? (
-                                        <>
-                                            <a
-                                                href='#!'
-                                                className='button-main whitespace-nowrap'
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    alert('Minimum 2 products required to compare!')
-                                                }}
-                                            >
-                                                Compare Products
-                                            </a>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Link href={'/compare'} onClick={closeModalCompare} className='button-main whitespace-nowrap'>Compare Products</Link>
-                                        </>
-                                    )
-                                }
+                                {compareState.compareArray.length < 2 ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            disabled
+                                            className='button-main whitespace-nowrap opacity-60 cursor-not-allowed'
+                                            onClick={(e) => { e.stopPropagation() }}
+                                        >
+                                            Compare Products
+                                        </button>
+                                        <div className="text-red-600 text-sm">Minimum 2 products required to compare</div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Link href={'/compare'} onClick={closeModalCompare} className='button-main whitespace-nowrap'>Compare Products</Link>
+                                    </>
+                                )}
                                 <div
                                     onClick={() => {
                                         closeModalCompare()
-                                        compareState.compareArray.length = 0
+                                        // Clear all compared products safely
+                                        compareState.compareArray.splice(0, compareState.compareArray.length)
                                     }}
                                     className="button-main whitespace-nowrap border border-black bg-white text-black"
                                 >

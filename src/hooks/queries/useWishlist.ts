@@ -8,18 +8,21 @@ import { WishlistItem, WishlistMeta } from '@/types/wishlist';
 /**
  * Fetch wishlist items with pagination
  */
-const fetchWishlistItems = async (page: number = 1, limit: number = 30): Promise<{ data: WishlistItem[]; meta: WishlistMeta }> => {
+const fetchWishlistItems = async (
+  page: number = 1,
+  limit: number = 30
+): Promise<{ data: WishlistItem[]; meta: WishlistMeta }> => {
   const response = await apiClient.getWithMeta<WishlistItem[], WishlistMeta>(
     `${api.wishlist.list}?page=${page}&limit=${limit}`
   );
-  
+
   if (!response.data) {
-    return { 
-      data: [], 
-      meta: { total: 0, page, limit, pages: 0, hasNext: false, hasPrev: false } 
+    return {
+      data: [],
+      meta: { total: 0, page, limit, pages: 0, hasNext: false, hasPrev: false },
     };
   }
-  
+
   return { data: response.data, meta: response.meta! };
 };
 
@@ -35,7 +38,7 @@ const fetchWishlistCount = async (): Promise<number> => {
  * Hook to get wishlist items with pagination
  */
 export const useWishlistItems = (
-  page: number = 1, 
+  page: number = 1,
   limit: number = 30
 ): UseQueryResult<{ data: WishlistItem[]; meta: WishlistMeta }, Error> => {
   const { data: session } = useSession();
@@ -94,9 +97,7 @@ export const useIsInWishlist = (
   }
 
   // Search for product in cached wishlist items
-  const wishlistItem = cachedData.data.find(
-    (item) => item.product._id === productId
-  );
+  const wishlistItem = cachedData.data.find((item) => item.product._id === productId);
 
   return {
     isInWishlist: !!wishlistItem,

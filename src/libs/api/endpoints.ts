@@ -43,6 +43,10 @@ export const api = {
     recommendations: '/products/recommendation4u',
     recommendationsByProduct: (productId: string) =>
       `/products/recommendation?productId=${productId}`,
+    // New endpoints for product detail system
+    relatedProducts: (productId: string) => `/products/${productId}/related`,
+    popularProducts: '/products/popular',
+    reviews: (productId: string) => `/products/${productId}/reviews`,
   },
 
   // Cart endpoints
@@ -95,6 +99,8 @@ export const api = {
     create: '/reviews/create',
     update: (reviewId: string) => `/reviews/${reviewId}`,
     delete: (reviewId: string) => `/reviews/${reviewId}`,
+    // New endpoints
+    like: (reviewId: string) => `/products/reviews/${reviewId}/like`,
   },
 
   // Category endpoints
