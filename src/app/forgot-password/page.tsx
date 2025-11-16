@@ -2,7 +2,7 @@
 import React from 'react'
 import Link from 'next/link'
 import TopNavOne from '@/components/Header/TopNav/TopNavOne'
-import MenuOne from '@/components/Header/Menu/MenuOne'
+
 import Breadcrumb from '@/components/Breadcrumb/Breadcrumb'
 import Footer from '@/components/Footer/Footer'
 import ForgotPasswordForm from '@/components/forms/ForgotPasswordForm'
@@ -13,8 +13,8 @@ const ForgotPassword = () => {
         <>
             <TopNavOne props="style-one bg-black" slogan="New customers save 10% with the code GET10" />
             <div id="header" className='relative w-full'>
-                <MenuOne props="bg-transparent" />
-<br />            </div>
+                {/* <MenuOne props="bg-transparent" /> */}
+                <br />            </div>
             <div className="forgot-pass md:mb-20 mt-32 my-10">
                 <div className="container">
                     <div className="content-main flex gap-y-8 max-md:flex-col">

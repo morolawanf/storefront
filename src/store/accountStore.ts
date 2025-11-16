@@ -1,10 +1,11 @@
+import type { OrderQueryParams } from '@/types/order';
 import { create } from 'zustand';
 
 interface AccountStore {
   // Tab states
   activeTab: string;
   activeAddress: string | null;
-  activeOrders: string;
+  activeOrders: NonNullable<OrderQueryParams['status']>;
   openDetail: boolean;
 
   // Pagination states
@@ -14,7 +15,7 @@ interface AccountStore {
   // Actions
   setActiveTab: (tab: string) => void;
   setActiveAddress: (address: string | null) => void;
-  setActiveOrders: (orders: string) => void;
+  setActiveOrders: (orders: OrderQueryParams['status']) => void;
   setOpenDetail: (open: boolean) => void;
   toggleActiveAddress: (address: string) => void;
 
@@ -28,7 +29,7 @@ export const useAccountStore = create<AccountStore>((set) => ({
   // Initial states
   activeTab: 'dashboard',
   activeAddress: 'billing',
-  activeOrders: 'all',
+  activeOrders: 'All',
   openDetail: false,
   orderPage: 1,
   orderLimit: 10,

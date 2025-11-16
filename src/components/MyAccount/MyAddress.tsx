@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import * as Icon from '@phosphor-icons/react/dist/ssr';
 import { useAccountStore } from '@/store/accountStore';
 import { useAddresses } from '@/hooks/queries/useAddresses';
 import { useAddAddress, useUpdateAddress, useDeleteAddress } from '@/hooks/mutations/useAddressMutations';
 import { Address, AddAddressInput } from '@/types/user';
 import ConfirmModal from '@/components/Modal/ConfirmModal';
+import { useAllShippingConfig } from '@/hooks/useLogisticsLocations';
 
 // Empty address form structure
 const emptyAddress: AddAddressInput = {
@@ -18,13 +19,14 @@ const emptyAddress: AddAddressInput = {
   city: '',
   zipCode: '',
   state: '',
+  lga: '',
   country: '',
   active: false,
 };
 
 export default function MyAddress() {
   const { activeTab } = useAccountStore();
-  
+
   // State for managing UI
   const [activeId, setActiveId] = useState<number | null>(null);
   const [expandedAddressId, setExpandedAddressId] = useState<string | null>(null);
@@ -40,10 +42,34 @@ export default function MyAddress() {
   // Fetch addresses
   const { data: addresses = [], isLoading, error: fetchError } = useAddresses();
 
+  // Fetch shipping configurations for logistics dropdowns
+  const { data: shippingConfigs, isLoading: isLoadingShippingConfigs } = useAllShippingConfig();
+
   // Mutations
   const addMutation = useAddAddress();
   const updateMutation = useUpdateAddress();
   const deleteMutation = useDeleteAddress();
+
+  // Derive available states based on selected country
+  const availableStates = useMemo(() => {
+    if (!shippingConfigs || !formData.country) return [];
+    const selectedCountry = shippingConfigs.find((c) => c.countryName === formData.country);
+    return selectedCountry?.states || [];
+  }, [shippingConfigs, formData.country]);
+
+  // Derive available LGAs based on selected state
+  const availableLGAs = useMemo(() => {
+    if (!formData.state) return [];
+    const selectedState = availableStates.find((s) => s.name === formData.state);
+    return selectedState?.lgas || [];
+  }, [availableStates, formData.state]);
+
+  // Derive available cities based on selected state (for reference)
+  const availableCities = useMemo(() => {
+    if (!formData.state) return [];
+    const selectedState = availableStates.find((s) => s.name === formData.state);
+    return selectedState?.cities || [];
+  }, [availableStates, formData.state]);
 
   // Don't render if not active tab
   if (activeTab !== 'address') return null;
@@ -77,6 +103,7 @@ export default function MyAddress() {
       city: address.city,
       zipCode: address.zipCode,
       state: address.state,
+      lga: address.lga,
       country: address.country,
       active: address.active,
     });
@@ -96,15 +123,21 @@ export default function MyAddress() {
   // Validate form
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.firstName.trim()) errors.firstName = 'First name is required';
     if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
     if (!formData.phoneNumber.trim()) errors.phoneNumber = 'Phone number is required';
     if (!formData.address1.trim()) errors.address1 = 'Address is required';
     if (!formData.city.trim()) errors.city = 'City is required';
     if (!formData.zipCode.trim()) errors.zipCode = 'ZIP code is required';
-    if (!formData.state.trim()) errors.state = 'State is required';
-    if (!formData.country.trim()) errors.country = 'Country is required';
+    if (!formData.country) errors.country = 'Country is required';
+    if (!formData.state) errors.state = 'State is required';
+    if (!formData.lga) errors.lga = 'LGA is required';
+
+    // Validate LGA exists in available options for selected state
+    if (formData.lga && formData.state && !availableLGAs?.find(l => l.name === formData.lga)) {
+      errors.lga = 'Selected LGA is not valid for this state';
+    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -113,7 +146,7 @@ export default function MyAddress() {
   // Handle form submission (add or update)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     try {
@@ -127,7 +160,7 @@ export default function MyAddress() {
         // Add new address
         await addMutation.mutateAsync(formData);
       }
-      
+
       // Reset form on success
       handleCancel();
     } catch (error) {
@@ -162,7 +195,7 @@ export default function MyAddress() {
   };
 
   const handleDeleteCancel = () => {
-    setDeleteConfirmState({ show: false, addressId: null});
+    setDeleteConfirmState({ show: false, addressId: null });
   };
 
   // Handle setting active address
@@ -179,7 +212,22 @@ export default function MyAddress() {
 
   // Handle input change
   const handleInputChange = (field: keyof AddAddressInput, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+
+      // Cascading reset logic for location fields
+      if (field === 'country') {
+        // Reset state and lga when country changes
+        updated.state = '';
+        updated.lga = '';
+      } else if (field === 'state') {
+        // Reset lga when state changes
+        updated.lga = '';
+      }
+
+      return updated;
+    });
+
     // Clear error for this field when user starts typing
     if (formErrors[field as string]) {
       setFormErrors(prev => {
@@ -241,9 +289,9 @@ export default function MyAddress() {
             <div>
               <div className="font-semibold">Operation Failed</div>
               <div className="text-sm mt-1">
-                {addMutation.error?.message || 
-                 updateMutation.error?.message || 
-                 deleteMutation.error?.message}
+                {addMutation.error?.message ||
+                  updateMutation.error?.message ||
+                  deleteMutation.error?.message}
               </div>
             </div>
           </div>
@@ -263,7 +311,7 @@ export default function MyAddress() {
               <Icon.X className="text-2xl" />
             </button>
           </div>
-          
+
           <form onSubmit={handleSubmit}>
             <div className="grid sm:grid-cols-2 gap-4 gap-y-5">
               {/* First Name */}
@@ -272,9 +320,8 @@ export default function MyAddress() {
                   First Name <span className="text-red">*</span>
                 </label>
                 <input
-                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                    formErrors.firstName ? 'border-red' : ''
-                  }`}
+                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.firstName ? 'border-red' : ''
+                    }`}
                   id="newFirstName"
                   type="text"
                   value={formData.firstName}
@@ -291,9 +338,8 @@ export default function MyAddress() {
                   Last Name <span className="text-red">*</span>
                 </label>
                 <input
-                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                    formErrors.lastName ? 'border-red' : ''
-                  }`}
+                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.lastName ? 'border-red' : ''
+                    }`}
                   id="newLastName"
                   type="text"
                   value={formData.lastName}
@@ -310,9 +356,8 @@ export default function MyAddress() {
                   Phone <span className="text-red">*</span>
                 </label>
                 <input
-                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                    formErrors.phoneNumber ? 'border-red' : ''
-                  }`}
+                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.phoneNumber ? 'border-red' : ''
+                    }`}
                   id="newPhone"
                   type="tel"
                   value={formData.phoneNumber}
@@ -328,15 +373,26 @@ export default function MyAddress() {
                 <label htmlFor="newCountry" className="caption1 capitalize">
                   Country / Region <span className="text-red">*</span>
                 </label>
-                <input
-                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                    formErrors.country ? 'border-red' : ''
-                  }`}
-                  id="newCountry"
-                  type="text"
-                  value={formData.country}
-                  onChange={(e) => handleInputChange('country', e.target.value)}
-                />
+                <div className="relative">
+                  <select
+                    className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${formErrors.country ? 'border-red' : ''
+                      } ${isLoadingShippingConfigs ? 'pr-10' : ''}`}
+                    id="newCountry"
+                    value={formData.country}
+                    onChange={(e) => handleInputChange('country', e.target.value)}
+                    disabled={isLoadingShippingConfigs}
+                  >
+                    <option value="">Choose Country</option>
+                    {shippingConfigs?.map((config) => (
+                      <option key={config.countryCode} value={config.countryName}>
+                        {config.countryName}
+                      </option>
+                    ))}
+                  </select>
+                  {isLoadingShippingConfigs && (
+                    <Icon.CircleNotch className="absolute right-3 top-1/2 -translate-y-1/2 text-xl animate-spin text-secondary" />
+                  )}
+                </div>
                 {formErrors.country && (
                   <div className="text-red text-xs mt-1">{formErrors.country}</div>
                 )}
@@ -348,9 +404,8 @@ export default function MyAddress() {
                   Street Address <span className="text-red">*</span>
                 </label>
                 <input
-                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                    formErrors.address1 ? 'border-red' : ''
-                  }`}
+                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.address1 ? 'border-red' : ''
+                    }`}
                   id="newAddress1"
                   type="text"
                   value={formData.address1}
@@ -381,9 +436,8 @@ export default function MyAddress() {
                   Town / City <span className="text-red">*</span>
                 </label>
                 <input
-                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                    formErrors.city ? 'border-red' : ''
-                  }`}
+                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.city ? 'border-red' : ''
+                    }`}
                   id="newCity"
                   type="text"
                   value={formData.city}
@@ -399,17 +453,48 @@ export default function MyAddress() {
                 <label htmlFor="newState" className="caption1 capitalize">
                   State <span className="text-red">*</span>
                 </label>
-                <input
-                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                    formErrors.state ? 'border-red' : ''
-                  }`}
+                <select
+                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${formErrors.state ? 'border-red' : ''
+                    }`}
                   id="newState"
-                  type="text"
                   value={formData.state}
                   onChange={(e) => handleInputChange('state', e.target.value)}
-                />
+                  disabled={isLoadingShippingConfigs || !formData.country || !availableStates.length}
+                >
+                  <option value="">Choose State</option>
+                  {availableStates?.map((state) => (
+                    <option key={state.name} value={state.name}>
+                      {state.name}
+                    </option>
+                  ))}
+                </select>
                 {formErrors.state && (
                   <div className="text-red text-xs mt-1">{formErrors.state}</div>
+                )}
+              </div>
+
+              {/* LGA */}
+              <div>
+                <label htmlFor="newLga" className="caption1 capitalize">
+                  LGA <span className="text-red">*</span>
+                </label>
+                <select
+                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${formErrors.lga ? 'border-red' : ''
+                    }`}
+                  id="newLga"
+                  value={formData.lga}
+                  onChange={(e) => handleInputChange('lga', e.target.value)}
+                  disabled={!formData.state || !availableLGAs.length}
+                >
+                  <option value="">Choose LGA</option>
+                  {availableLGAs?.map((lga) => (
+                    <option key={lga.name} value={lga.name}>
+                      {lga.name}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.lga && (
+                  <div className="text-red text-xs mt-1">{formErrors.lga}</div>
                 )}
               </div>
 
@@ -419,9 +504,8 @@ export default function MyAddress() {
                   ZIP Code <span className="text-red">*</span>
                 </label>
                 <input
-                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                    formErrors.zipCode ? 'border-red' : ''
-                  }`}
+                  className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.zipCode ? 'border-red' : ''
+                    }`}
                   id="newZip"
                   type="text"
                   value={formData.zipCode}
@@ -488,9 +572,8 @@ export default function MyAddress() {
           {addresses.map((address) => (
             <div
               key={address._id}
-              className={`border rounded-xl overflow-hidden transition-all ${
-                address.active ? 'border-black border-2' : 'border-line'
-              }`}
+              className={`border rounded-xl overflow-hidden transition-all ${address.active ? 'border-black border-2' : 'border-line'
+                }`}
             >
               {/* Address header */}
               <button
@@ -516,9 +599,8 @@ export default function MyAddress() {
                   </div>
                 </div>
                 <Icon.CaretDown
-                  className={`text-2xl transition-transform duration-300 ${
-                    expandedAddressId === address._id ? 'rotate-180' : ''
-                  }`}
+                  className={`text-2xl transition-transform duration-300 ${expandedAddressId === address._id ? 'rotate-180' : ''
+                    }`}
                 />
               </button>
 
@@ -535,9 +617,8 @@ export default function MyAddress() {
                             First Name <span className="text-red">*</span>
                           </label>
                           <input
-                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                              formErrors.firstName ? 'border-red' : ''
-                            }`}
+                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.firstName ? 'border-red' : ''
+                              }`}
                             type="text"
                             value={formData.firstName}
                             onChange={(e) => handleInputChange('firstName', e.target.value)}
@@ -552,9 +633,8 @@ export default function MyAddress() {
                             Last Name <span className="text-red">*</span>
                           </label>
                           <input
-                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                              formErrors.lastName ? 'border-red' : ''
-                            }`}
+                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.lastName ? 'border-red' : ''
+                              }`}
                             type="text"
                             value={formData.lastName}
                             onChange={(e) => handleInputChange('lastName', e.target.value)}
@@ -569,9 +649,8 @@ export default function MyAddress() {
                             Phone <span className="text-red">*</span>
                           </label>
                           <input
-                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                              formErrors.phoneNumber ? 'border-red' : ''
-                            }`}
+                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.phoneNumber ? 'border-red' : ''
+                              }`}
                             type="tel"
                             value={formData.phoneNumber}
                             onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
@@ -585,14 +664,25 @@ export default function MyAddress() {
                           <label className="caption1 capitalize">
                             Country / Region <span className="text-red">*</span>
                           </label>
-                          <input
-                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                              formErrors.country ? 'border-red' : ''
-                            }`}
-                            type="text"
-                            value={formData.country}
-                            onChange={(e) => handleInputChange('country', e.target.value)}
-                          />
+                          <div className="relative">
+                            <select
+                              className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${formErrors.country ? 'border-red' : ''
+                                } ${isLoadingShippingConfigs ? 'pr-10' : ''}`}
+                              value={formData.country}
+                              onChange={(e) => handleInputChange('country', e.target.value)}
+                              disabled={isLoadingShippingConfigs}
+                            >
+                              <option value="">Choose Country</option>
+                              {shippingConfigs?.map((config) => (
+                                <option key={config.countryCode} value={config.countryName}>
+                                  {config.countryName}
+                                </option>
+                              ))}
+                            </select>
+                            {isLoadingShippingConfigs && (
+                              <Icon.CircleNotch className="absolute right-3 top-1/2 -translate-y-1/2 text-xl animate-spin text-secondary" />
+                            )}
+                          </div>
                           {formErrors.country && (
                             <div className="text-red text-xs mt-1">{formErrors.country}</div>
                           )}
@@ -603,9 +693,8 @@ export default function MyAddress() {
                             Street Address <span className="text-red">*</span>
                           </label>
                           <input
-                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                              formErrors.address1 ? 'border-red' : ''
-                            }`}
+                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.address1 ? 'border-red' : ''
+                              }`}
                             type="text"
                             value={formData.address1}
                             onChange={(e) => handleInputChange('address1', e.target.value)}
@@ -629,12 +718,58 @@ export default function MyAddress() {
 
                         <div>
                           <label className="caption1 capitalize">
+                            State <span className="text-red">*</span>
+                          </label>
+                          <select
+                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${formErrors.state ? 'border-red' : ''
+                              }`}
+                            value={formData.state}
+                            onChange={(e) => handleInputChange('state', e.target.value)}
+                            disabled={isLoadingShippingConfigs || !formData.country || !availableStates.length}
+                          >
+                            <option value="">Choose State</option>
+                            {availableStates?.map((state) => (
+                              <option key={state.name} value={state.name}>
+                                {state.name}
+                              </option>
+                            ))}
+                          </select>
+                          {formErrors.state && (
+                            <div className="text-red text-xs mt-1">{formErrors.state}</div>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="caption1 capitalize">
+                            LGA <span className="text-red">*</span>
+                          </label>
+                          <select
+                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${formErrors.lga ? 'border-red' : ''
+                              }`}
+                            value={formData.lga}
+                            onChange={(e) => handleInputChange('lga', e.target.value)}
+                            disabled={!formData.state || !availableLGAs.length}
+                          >
+                            <option value="">Choose LGA</option>
+                            {availableLGAs?.map((lga) => (
+                              <option key={lga.name} value={lga.name}>
+                                {lga.name}
+                              </option>
+                            ))}
+                          </select>
+                          {formErrors.lga && (
+                            <div className="text-red text-xs mt-1">{formErrors.lga}</div>
+                          )}
+                        </div>
+
+
+                        <div>
+                          <label className="caption1 capitalize">
                             Town / City <span className="text-red">*</span>
                           </label>
                           <input
-                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                              formErrors.city ? 'border-red' : ''
-                            }`}
+                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.city ? 'border-red' : ''
+                              }`}
                             type="text"
                             value={formData.city}
                             onChange={(e) => handleInputChange('city', e.target.value)}
@@ -646,29 +781,11 @@ export default function MyAddress() {
 
                         <div>
                           <label className="caption1 capitalize">
-                            State <span className="text-red">*</span>
-                          </label>
-                          <input
-                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                              formErrors.state ? 'border-red' : ''
-                            }`}
-                            type="text"
-                            value={formData.state}
-                            onChange={(e) => handleInputChange('state', e.target.value)}
-                          />
-                          {formErrors.state && (
-                            <div className="text-red text-xs mt-1">{formErrors.state}</div>
-                          )}
-                        </div>
-
-                        <div>
-                          <label className="caption1 capitalize">
                             ZIP Code <span className="text-red">*</span>
                           </label>
                           <input
-                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                              formErrors.zipCode ? 'border-red' : ''
-                            }`}
+                            className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.zipCode ? 'border-red' : ''
+                              }`}
                             type="text"
                             value={formData.zipCode}
                             onChange={(e) => handleInputChange('zipCode', e.target.value)}
@@ -718,16 +835,9 @@ export default function MyAddress() {
                             <br />
                             {address.city}, {address.state} {address.zipCode}
                             <br />
-                            
+                            {address.lga && <>{address.lga}<br /></>}
+                            {address.country}
                           </div>
-                        </div>
-                                                  <div>
-                          <div className="text-secondary text-sm mb-1">ZipCode</div>
-                          <div className="text-title">{address.zipCode}</div>
-                        </div>
-                          <div>
-                          <div className="text-secondary text-sm mb-1">Country</div>
-                          <div className="text-title">{address.country}</div>
                         </div>
                       </div>
 

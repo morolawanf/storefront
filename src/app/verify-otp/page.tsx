@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import TopNavOne from "@/components/Header/TopNav/TopNavOne";
-import MenuOne from "@/components/Header/Menu/MenuOne";
+// import MenuOne from "@/components/Header/Menu/MenuOne";
 import Breadcrumb from "@/components/Breadcrumb/Breadcrumb";
 import Footer from "@/components/Footer/Footer";
 import VerifyOTPForm from "@/components/forms/VerifyOTPForm";
@@ -13,13 +13,13 @@ export const metadata: Metadata = {
 };
 
 export default async function VerifyOTPPage() {
-    const session = await auth();
-    if(!session) {
-        redirect('/login');
-    }
-    if(session.user.emailVerified) {
-        redirect('/');
-    }
+  const session = await auth();
+  if (!session) {
+    redirect('/login');
+  }
+  if (session.user.emailVerified) {
+    redirect('/');
+  }
   return (
     <>
       <TopNavOne
@@ -27,7 +27,7 @@ export default async function VerifyOTPPage() {
         slogan="New customers save 10% with the code GET10"
       />
       <div id="header" className="relative w-full">
-        <MenuOne props="bg-transparent" />
+        {/* <MenuOne props="bg-transparent" /> */}
       </div>
       <div className="verify-otp-block md:py-20 py-10 my-10">
         <div className="container">

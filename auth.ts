@@ -1,28 +1,28 @@
-import APIRoutes from "@/libs/apiRoutes";
-import client from "@/libs/dbClient";
-import { MongoDBAdapter } from "@auth/mongodb-adapter";
-import { randomUUID } from "crypto";
-import { ObjectId } from "mongodb";
-import NextAuth, { AuthError, CredentialsSignin, Session, User } from "next-auth";
-import { AdapterUser } from "next-auth/adapters";
-import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
+import APIRoutes from '@/libs/apiRoutes';
+import client from '@/libs/dbClient';
+import { MongoDBAdapter } from '@auth/mongodb-adapter';
+import { randomUUID } from 'crypto';
+import { ObjectId } from 'mongodb';
+import NextAuth, { AuthError, CredentialsSignin, Session, User } from 'next-auth';
+import { AdapterUser } from 'next-auth/adapters';
+import Credentials from 'next-auth/providers/credentials';
+import Google from 'next-auth/providers/google';
 
 class InvalidLoginError extends CredentialsSignin {
-  code = "Invalid identifier or password";
+  code = 'Invalid identifier or password';
 }
 
 class AccountNotFoundError extends AuthError {
   constructor() {
     super();
-    this.message = "Invalid credentials. Please sign up first.";
+    this.message = 'Invalid credentials. Please sign up first.';
   }
 }
 
 class AuthenticationFailedError extends AuthError {
   constructor(message?: string) {
     super();
-    this.message = message || "Authentication failed";
+    this.message = message || 'Authentication failed';
   }
 }
 
@@ -61,7 +61,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }),
           });
           if (!response.ok) {
-            
             if (response.status === 401) {
               throw new InvalidLoginError();
             }
@@ -73,35 +72,34 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             data: {
               emailVerified: null | Date;
               token: string;
-            } & User
+            } & User;
           };
-          console.log("Login response:", res);
+          console.log('Login response:', res);
 
           return res.data ?? null;
         } catch (error) {
-          console.log("Error during credentials authorization:", error);
+          console.log('Error during credentials authorization:', error);
           if (error instanceof InvalidLoginError) {
             throw error;
           }
           throw new AuthenticationFailedError(
-            error instanceof Error ? error.message : "Unknown error"
+            error instanceof Error ? error.message : 'Unknown error'
           );
         }
       },
     }),
   ],
   adapter: MongoDBAdapter(client),
-  session: { strategy: "jwt" },
-  
+  session: { strategy: 'jwt' },
+
   callbacks: {
-    
     async signIn({ user, account, profile }) {
-      if (account?.provider === "google") {
+      if (account?.provider === 'google') {
         try {
           const response = await fetch(APIRoutes.providerLogin, {
-            method: "POST",
+            method: 'POST',
             headers: {
-              "Content-Type": "application/json",
+              'Content-Type': 'application/json',
             },
             body: JSON.stringify({
               provider: account.provider,
@@ -110,9 +108,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           });
 
           const result = await response.json();
+          console.log(result);
 
           if (!response.ok) {
-            if (result.message === "Account not found" || result.message === "User not found") {
+            if (result.message === 'Account not found' || result.message === 'User not found') {
               throw new AccountNotFoundError();
             }
             throw new AuthenticationFailedError(result.message);
@@ -124,12 +123,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             user.email = result.data.email;
             user.image = result.data.image;
             user.id = result.data._id;
-            user.emailVerified = result.data.emailVerified ? new Date(result.data.emailVerified) : new Date();
+            user.emailVerified = result.data.emailVerified
+              ? new Date(result.data.emailVerified)
+              : new Date();
           }
 
           return true;
         } catch (error) {
-          console.error("Error during Google sign-in:", error);
+          console.error('Error during Google sign-in:', error);
           // Re-throw to let NextAuth handle it
           throw error;
         }
@@ -138,7 +139,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return true;
     },
     async jwt({ token, user, account, trigger, session }) {
-
       if (user) {
         token.id = user.id;
         token.token = user.token;
@@ -146,11 +146,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.email = user.email;
         token.image = user.image;
         token.emailVerified = user.emailVerified;
-
       }
-       if(trigger === "update" && session) {
-          token.emailVerified = session.user.emailVerified;
-        }
+      if (trigger === 'update' && session) {
+        token.emailVerified = session.user.emailVerified;
+      }
 
       return token;
     },
@@ -169,13 +168,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
   events: {
-    
     linkAccount: async ({ user, account }) => {
-      if (account.provider === "google") {
+      if (account.provider === 'google') {
         try {
           await client
             .db()
-            .collection("users")
+            .collection('users')
             .updateOne({ _id: new ObjectId(user.id) }, { $set: { emailVerified: new Date() } });
           return;
         } catch (error) {
@@ -186,6 +184,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
   pages: {
-    error: "/register",
+    error: '/register',
   },
 });

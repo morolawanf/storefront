@@ -10,6 +10,7 @@ export interface Address {
   city: string;
   zipCode: string;
   state: string;
+  lga: string;
   country: string;
   active: boolean;
 }
@@ -23,6 +24,7 @@ export interface AddAddressInput {
   city: string;
   zipCode: string;
   state: string;
+  lga: string;
   country: string;
   active?: boolean;
 }
@@ -36,6 +38,7 @@ export interface UpdateAddressInput {
   city?: string;
   zipCode?: string;
   state?: string;
+  lga?: string;
   country?: string;
   active?: boolean;
 }
@@ -66,9 +69,6 @@ export interface UpdateProfileInput {
   notifications?: boolean;
 }
 
-
 export type AddressesResponse = Address[];
 
-
 export type UserProfileResponse = UserProfile;
-

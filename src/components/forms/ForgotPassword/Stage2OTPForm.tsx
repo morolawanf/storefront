@@ -99,7 +99,7 @@ export default function Stage2OTPForm() {
 
       <div className="heading4">Verify Code</div>
       <div className="body1 mt-2">
-        We've sent a 6-digit code to{" "}
+        {`We've sent a 6-digit code to `}
         <span className="font-semibold text-black">{email}</span>
       </div>
 
@@ -166,7 +166,7 @@ export default function Stage2OTPForm() {
                 "Sending..."
               ) : (
                 <>
-                  Didn't receive the code?{" "}
+                  {`Didn't receive the code? `}
                   <span className="underline font-semibold">Resend Code</span>
                 </>
               )}

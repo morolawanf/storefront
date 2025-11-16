@@ -15,7 +15,7 @@ interface WithPaginationProps<T> {
   query: UseQueryResult<T & { meta: PaginationMeta; }, Error>;
   currentPage: number;
   onPageChange: (page: number) => void;
-  children: (data: T, meta: PaginationMeta) => React.ReactNode;
+  children: React.ReactNode;
   loadingComponent?: React.ReactNode;
   errorComponent?: (error: Error) => React.ReactNode;
   emptyComponent?: React.ReactNode;
@@ -150,7 +150,7 @@ export function WithPagination<T>({
   return (
     <div className="w-full">
       {/* Render children with data */}
-      <div className="mb-8">{children(data as T, meta)}</div>
+      <div className="mb-8">{children}</div>
 
       {/* Pagination controls */}
       {totalPages > 1 && (
@@ -169,8 +169,8 @@ export function WithPagination<T>({
               onClick={() => onPageChange(currentPage - 1)}
               disabled={!canGoPrevious}
               className={`flex items-center justify-center w-10 h-10 rounded-lg border border-line transition-colors ${canGoPrevious
-                  ? 'hover:bg-black hover:text-white hover:border-black cursor-pointer'
-                  : 'opacity-40 cursor-not-allowed'
+                ? 'hover:bg-black hover:text-white hover:border-black cursor-pointer'
+                : 'opacity-40 cursor-not-allowed'
                 }`}
               aria-label="Previous page"
             >
@@ -196,8 +196,8 @@ export function WithPagination<T>({
                     key={pageNum}
                     onClick={() => onPageChange(pageNum)}
                     className={`flex items-center justify-center min-w-10 h-10 px-3 rounded-lg border transition-colors ${isActive
-                        ? 'bg-black text-white border-black font-semibold'
-                        : 'border-line hover:bg-surface hover:border-secondary'
+                      ? 'bg-black text-white border-black font-semibold'
+                      : 'border-line hover:bg-surface hover:border-secondary'
                       }`}
                   >
                     {pageNum}
@@ -211,8 +211,8 @@ export function WithPagination<T>({
               onClick={() => onPageChange(currentPage + 1)}
               disabled={!canGoNext}
               className={`flex items-center justify-center w-10 h-10 rounded-lg border border-line transition-colors ${canGoNext
-                  ? 'hover:bg-black hover:text-white hover:border-black cursor-pointer'
-                  : 'opacity-40 cursor-not-allowed'
+                ? 'hover:bg-black hover:text-white hover:border-black cursor-pointer'
+                : 'opacity-40 cursor-not-allowed'
                 }`}
               aria-label="Next page"
             >

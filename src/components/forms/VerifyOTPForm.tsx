@@ -51,7 +51,7 @@ export default function VerifyOTPForm() {
         const verifyResult = await apiClient.post(api.auth.verifyOtp, {
           code: value.otp,
         });
-        
+
         if (verifyResult.status === 200) {
           await update({
             ...session,
@@ -80,14 +80,14 @@ export default function VerifyOTPForm() {
 
     try {
       await apiClient.post(api.auth.resendOtp);
-      
+
       // Success - show check icon and start timer
       setResendSuccess(true);
       setResendTimer(90); // 1 minute countdown
     } catch (error) {
       const errorMessage = handleApiError(error);
       console.log("OTP resend error:", errorMessage);
-      
+
       setSubmitError(errorMessage);
     } finally {
       setResendLoading(false);
@@ -105,7 +105,7 @@ export default function VerifyOTPForm() {
       <div className="text-center mb-8">
         <h2 className="heading4 mb-2">Verify Your Email</h2>
         <p className="text-secondary">
-          We've sent a 6-digit code to{" "}
+          {`We've sent a 6-digit code to `}
           <span className="font-semibold text-black">{session?.user?.email}</span>
         </p>
       </div>
@@ -187,7 +187,7 @@ export default function VerifyOTPForm() {
               "Sending..."
             ) : (
               <>
-                Didn't receive the code? <span className="underline font-semibold">Resend OTP</span>
+                {`Didn't receive the code? `}<span className="underline font-semibold">Resend OTP</span>
               </>
             )}
           </button>

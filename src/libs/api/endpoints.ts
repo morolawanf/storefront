@@ -63,6 +63,7 @@ export const api = {
   // Order endpoints
   orders: {
     list: '/myOrder/orders',
+    statistics: '/myOrder/orders/statistics',
     byId: (id: string) => `/myOrder/orders/${id}`,
     create: '/myOrder/orders/create',
     cancel: (id: string) => `/myOrder/orders/${id}/cancel`,

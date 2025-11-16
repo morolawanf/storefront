@@ -1,33 +1,37 @@
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { auth } from '../../../../../auth';
 import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/provider/react-query';
 import { apiClient } from '@/libs/api/axios';
 import { api } from '@/libs/api/endpoints';
-import { OrderType } from '@/types/order';
+import { EnrichedOrder, OrderType } from '@/types/order';
 import OrderDetailsClient from './Client';
+import serverAPI from '@/libs/api/serverAPI';
+import { OrderByIdResponse } from '@/hooks/queries/useOrderById';
 
 // Fetch function for server-side prefetch
-async function prefetchOrder(orderId: string): Promise<OrderType> {
-  const response = await apiClient.get<{ message: string; data: OrderType }>(
-    api.orders.byId(orderId)
-  );
+async function prefetchOrder(orderId: string, token?: string): Promise<EnrichedOrder> {
+  const response = await serverAPI.get<EnrichedOrder>(api.orders.byId(orderId), {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    }
+  });
 
-  if (!response.data?.data) {
+  if (!response.data) {
     throw new Error('Order not found');
   }
 
-  return response.data.data;
+  return response.data;
 }
 
-export default async function OrderDetailsPage({ 
-  params 
-}: { 
-  params: Promise<{ orderId: string }> 
+export default async function OrderDetailsPage({
+  params
+}: {
+  params: Promise<{ orderId: string; }>;
 }) {
   // Server-side auth check
   const session = await auth();
-  
   if (!session?.user) {
     redirect('/login');
   }
@@ -38,16 +42,18 @@ export default async function OrderDetailsPage({
   const queryClient = new QueryClient();
 
   // Prefetch order data on the server
-  
+
   try {
     await queryClient.prefetchQuery({
-      queryKey: queryKeys.orders?.detail(orderId),
-      queryFn: () => prefetchOrder(orderId),
+      queryKey: ['orders', orderId],
+      queryFn: () => prefetchOrder(orderId, session?.user.token
+      ),
     });
   } catch (error) {
-    console.error('Failed to prefetch order:', error);
+    throw notFound();
     // Don't redirect, let the client handle the error
   }
+
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

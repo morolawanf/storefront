@@ -3,6 +3,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import Breadcrumb from '@/components/Breadcrumb/Breadcrumb';
 import Footer from '@/components/Footer/Footer';
 import { ProductDetail } from '@/types/product';
@@ -19,7 +20,13 @@ import { apiClient, handleApiError } from '@/libs/api/axios';
 import api from '@/libs/api/endpoints';
 import CheckoutAlerts from '@/components/Checkout/CheckoutAlerts';
 import CheckoutButton from '@/components/Checkout/CheckoutButton';
+import CheckoutSuccess from '@/components/Checkout/CheckoutSuccess';
 import { useCheckoutStore } from '@/store/useCheckoutStore';
+import { usePaymentStore } from '@/store/usePaymentStore';
+import CorrectionReviewModal from '@/components/Modal/CorrectionReviewModal';
+import { CheckoutErrors, CheckoutCorrectionResponse } from '@/types/checkout';
+import { parseCheckoutErrors, buildCartUpdatePayload, hasProductIssues, hasOnlyNonProductIssues } from '@/utils/cartCorrections';
+import Paystack from '@paystack/inline-js';
 
 type ShippingFormState = {
     firstName: string;
@@ -84,6 +91,7 @@ type CheckoutCorrectionPayload = {
     };
     changes: string[];
     changeDetails: CheckoutChangeDetail[];
+    checkoutErrors?: CheckoutErrors;
 };
 
 type SecureCheckoutSuccessResponse = {
@@ -115,6 +123,7 @@ type SecureCheckoutSuccessResponse = {
         paymentUrl: string;
         reference: string;
         transactionId: string;
+        access_code: string;
     } | null;
 };
 
@@ -122,9 +131,10 @@ type SecureCheckoutSuccessResponse = {
 const Checkout = () => {
     const searchParams = useSearchParams();
     const router = useRouter();
-
+    const queryClient = useQueryClient();
     // Use Zustand store for checkout state
     const { shippingMethod: storedShippingMethod, discountInfo, setShippingMethod: setCheckoutShippingMethod } = useCheckoutStore();
+    const { add: addPaymentReference, verify: verifyPaymentReference, clear: clearPaymentReference } = usePaymentStore();
     const [currentShippingMethod, setCurrentShippingMethod] = React.useState<string>(storedShippingMethod);
     const shippingMethod = currentShippingMethod; // pickup, normal, express
 
@@ -133,6 +143,9 @@ const Checkout = () => {
         isLoading,
         isGuest,
         refreshCart,
+        updateItem,
+        removeItem,
+        clearCart
     } = useCart();
 
     // Calculate subtotal from items using ModalCart's exact pricing method
@@ -308,6 +321,9 @@ const Checkout = () => {
     const [isSubmittingCheckout, setIsSubmittingCheckout] = useState<boolean>(false);
     const [isAcceptingCorrections, setIsAcceptingCorrections] = useState<boolean>(false);
     const [checkoutSuccess, setCheckoutSuccess] = useState<SecureCheckoutSuccessResponse | null>(null);
+    const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
+    const [showCorrectionModal, setShowCorrectionModal] = useState<boolean>(false);
+    const [parsedCheckoutErrors, setParsedCheckoutErrors] = useState<CheckoutErrors | null>(null);
 
     // Calculate cart statistics
     const cartStats = useMemo(() => {
@@ -322,7 +338,6 @@ const Checkout = () => {
         : discountInfo?.amount || 0;
 
     const resolvedSubtotal = pendingCorrections?.correctedCart.subtotal ?? subtotal;
-    console.log(resolvedSubtotal);
 
     const resolvedShippingCost = shippingMethod === 'pickup'
         ? 0
@@ -381,8 +396,8 @@ const Checkout = () => {
                         state: shippingForm.state,
                         city: shippingForm.city,
                         lga: shippingForm.lga,
-                        streetAddress: shippingForm.streetAddress,
-                        postalCode: shippingForm.postalCode,
+                        address1: shippingForm.streetAddress,
+                        zipCode: shippingForm.postalCode,
                     }
                     : undefined,
             paymentMethod: activePayment,
@@ -401,7 +416,7 @@ const Checkout = () => {
     }, [shippingMethod, calculatedShippingCost, selectedLocationMeta, items, shippingForm, activePayment, appliedCouponCodes, subtotal, resolvedDiscount]);
 
     const handleAcceptCorrections = useCallback(async () => {
-        if (!pendingCorrections) {
+        if (!pendingCorrections || !parsedCheckoutErrors) {
             return;
         }
 
@@ -410,22 +425,105 @@ const Checkout = () => {
         setCheckoutSuccess(null);
 
         try {
-            // Simply refresh cart to get latest data
+            // Build cart update operations from product issues
+            const correctionPayload = buildCartUpdatePayload(parsedCheckoutErrors.products || []);
+
+            // Apply all updates
+            for (const operation of correctionPayload.operations) {
+                if (operation.action === 'remove') {
+                    await removeItem(operation.cartItemId);
+                } else if (operation.action === 'update' && operation.updates) {
+                    await updateItem(operation.cartItemId, operation.updates);
+                }
+            }
+
+            // Refresh cart to get latest data
             await refreshCart();
 
-            // Update shipping cost from corrections
-            const updatedShippingCost = pendingCorrections.correctedCart.estimatedShipping?.cost ?? pendingCorrections.shippingCost;
-            setCalculatedShippingCost(updatedShippingCost);
+            // Invalidate product queries for affected products
+            for (const slug of correctionPayload.affectedProductSlugs) {
+                queryClient.invalidateQueries({ queryKey: ['product', slug] });
+            }
+
+            // Update shipping cost from corrections if shipping changed
+            if (parsedCheckoutErrors.shipping) {
+                setCalculatedShippingCost(parsedCheckoutErrors.shipping.currentCost);
+            } else if (pendingCorrections.shippingCost !== undefined) {
+                const updatedShippingCost = pendingCorrections.correctedCart.estimatedShipping?.cost ?? pendingCorrections.shippingCost;
+                setCalculatedShippingCost(updatedShippingCost);
+            }
+
+            // Clear errors and close modal
             setShippingCalculationError(null);
             setPendingCorrections(null);
+            setParsedCheckoutErrors(null);
+            setShowCorrectionModal(false);
+
+            // Show success message via checkoutSuccess state
+            // User will need to click "Place Order" again - this is safer than auto-retry
+            setCheckoutError(null);
+            // Set a temporary success message
+            alert('Cart corrections applied successfully. Please review and submit your order again.');
         } catch (acceptError) {
             setCheckoutError(handleApiError(acceptError));
         } finally {
             setIsAcceptingCorrections(false);
         }
-    }, [pendingCorrections, refreshCart]);
+    }, [pendingCorrections, parsedCheckoutErrors, refreshCart, removeItem, updateItem, queryClient]);
+
+    /**
+     * Reusable function to handle 400 checkout correction errors
+     * Extracts nested correction data from error.response.data.data structure
+     */
+    const handleCheckoutCorrectionError = useCallback((error: unknown): boolean => {
+        // Check if this is a 400 error with correction data
+        if (axios.isAxiosError(error) && error.response?.status === 400) {
+            const responseData = error.response.data;
+
+            // Backend returns: { message: "...", data: { needsUpdate: true, checkoutErrors: {...} } }
+            // Extract the nested data object
+            const correctionData = responseData?.data;
+
+            if (correctionData && 'needsUpdate' in correctionData && correctionData.needsUpdate) {
+                // Cast to CheckoutCorrectionResponse
+                const correctionPayload = correctionData as CheckoutCorrectionResponse;
+
+                setPendingCorrections(correctionPayload);
+                setCheckoutSuccess(null);
+
+                // Parse checkout errors
+                const errors = parseCheckoutErrors(correctionPayload);
+                setParsedCheckoutErrors(errors);
+
+                // Update shipping cost
+                const updatedShippingCost =
+                    correctionPayload.correctedCart.estimatedShipping?.cost ?? correctionPayload.shippingCost;
+                if (typeof updatedShippingCost === 'number') {
+                    setCalculatedShippingCost(updatedShippingCost);
+                }
+                setShippingCalculationError(null);
+
+                // Determine display strategy
+                if (errors && hasProductIssues(errors)) {
+                    // Product issues exist - show modal
+                    setShowCorrectionModal(true);
+                } else if (errors && errors.total) {
+                    // Total-only error - show blocking error
+                    setCheckoutError(errors.total.message || 'Order total verification failed. Please refresh and try again.');
+                } else {
+                    // Only shipping/coupon changes - these are shown as inline alerts (no modal)
+                    // User can proceed or accept changes via button
+                }
+
+                return true; // Handled as correction
+            }
+        }
+
+        return false; // Not a correction error
+    }, []);
 
     const handleSubmitCheckout = useCallback(async () => {
+
         if (items.length === 0) {
             setCheckoutError('Your cart is empty.');
             return;
@@ -441,27 +539,50 @@ const Checkout = () => {
         setCheckoutSuccess(null);
 
         try {
+            await verifyPaymentReference();
             const payload = buildCheckoutPayload();
+
             const response = await apiClient.post<SecureCheckoutSuccessResponse | CheckoutCorrectionPayload>(
                 api.checkout.secure,
-                payload
+                payload,
+                { skipErrorHandling: true } as any // Handle errors manually
             );
 
             const responseData = response.data;
-
             if (!responseData) {
                 throw new Error('Unable to complete checkout. Please try again.');
             }
 
+
             if ('needsUpdate' in responseData && responseData.needsUpdate) {
                 setPendingCorrections(responseData);
                 setCheckoutSuccess(null);
+
+                // Parse checkout errors
+                const errors = parseCheckoutErrors(responseData);
+
+                setParsedCheckoutErrors(errors);
+
+                // Update shipping cost
                 const updatedShippingCost =
                     responseData.correctedCart.estimatedShipping?.cost ?? responseData.shippingCost;
                 if (typeof updatedShippingCost === 'number') {
                     setCalculatedShippingCost(updatedShippingCost);
                 }
                 setShippingCalculationError(null);
+
+                // Determine display strategy
+                if (errors && hasProductIssues(errors)) {
+                    // Product issues exist - show modal
+                    setShowCorrectionModal(true);
+                } else if (errors && errors.total) {
+                    // Total-only error - show blocking error
+                    setCheckoutError(errors.total.message || 'Order total verification failed. Please refresh and try again.');
+                } else {
+                    // Only shipping/coupon changes - these are shown as inline alerts (no modal)
+                    // User can proceed or accept changes via button
+                }
+
                 return;
             }
 
@@ -480,14 +601,50 @@ const Checkout = () => {
             }
 
             if (successPayload.payment?.paymentUrl) {
+                // Store payment reference before opening payment popup
+                if (successPayload.payment?.reference) {
+                    addPaymentReference(successPayload.payment.reference);
+                }
+
                 if (typeof window !== 'undefined') {
-                    window.location.href = successPayload.payment.paymentUrl;
+
+                    const popup = new Paystack();
+                    popup.resumeTransaction(successPayload.payment?.access_code, {
+                        onCancel: async () => {
+                            console.log('canelled');
+                            await verifyPaymentReference();
+
+                        },
+                        onError: async (ee) => {
+                            await verifyPaymentReference();
+                            console.log('error', ee);
+
+                        },
+                        onLoad: (ll) => {
+                            console.log('load', ll);
+
+                        },
+                        onSuccess: (ss) => {
+                            setPaymentSuccess(true);
+                            clearCart();
+                            console.log('success', ss);
+
+                        }
+                    });
                 } else {
                     router.push(successPayload.payment.paymentUrl);
                 }
             }
         } catch (submitError) {
-            setCheckoutError(handleApiError(submitError));
+            console.log(submitError);
+
+            // Try to handle as correction error first
+            const isHandledAsCorrection = handleCheckoutCorrectionError(submitError);
+
+            if (!isHandledAsCorrection) {
+                // Not a correction error - show generic error message
+                setCheckoutError(handleApiError(submitError));
+            }
         } finally {
             setIsSubmittingCheckout(false);
         }
@@ -499,6 +656,9 @@ const Checkout = () => {
         isGuest,
         refreshCart,
         router,
+        handleCheckoutCorrectionError,
+        addPaymentReference,
+        verifyPaymentReference,
     ]);
 
     // Check if shipping form is complete (only needed for delivery methods)
@@ -541,6 +701,7 @@ const Checkout = () => {
     // Calculate shipping cost when form is complete
     React.useEffect(() => {
         let isCancelled = false;
+        let debounceTimeout: NodeJS.Timeout;
 
         const calculateShipping = async () => {
             if (shippingMethod === 'pickup') {
@@ -654,10 +815,14 @@ const Checkout = () => {
             }
         };
 
-        calculateShipping();
+        // Debounce shipping calculation by 1 second
+        debounceTimeout = setTimeout(() => {
+            calculateShipping();
+        }, 1000);
 
         return () => {
             isCancelled = true;
+            clearTimeout(debounceTimeout);
         };
     }, [
         shippingMethod,
@@ -679,18 +844,21 @@ const Checkout = () => {
     };
 
     const handleChangeShippingMethod = (newMethod: 'pickup' | 'normal' | 'express') => {
-        const newShipCost = newMethod === 'pickup' ? 0 : newMethod === 'normal' ? 30 : 40;
+
         setCurrentShippingMethod(newMethod);
         setCalculatedShippingCost(newMethod === 'pickup' ? 0 : null);
         setIsChangingShippingMethod(false);
         setIsShippingExpanded(newMethod !== 'pickup');
 
-        // Update URL without reload - shipping method now managed by Zustand
-        router.replace('/checkout', {
-            scroll: false
-        });
+
     };
 
+    {/* Show success screen if checkout was successful */ }
+    if (paymentSuccess) return (
+        <CheckoutSuccess
+            orderId={checkoutSuccess!.orderId}
+        />
+    );
     return (
         <>
             <div className="main-content w-full h-full flex flex-col items-center justify-center relative z-[1]">
@@ -1308,13 +1476,70 @@ const Checkout = () => {
                                         <span>Secure Payment</span>
                                     </div>
                                 </div>
+
+                                {/* Inline Alerts for Shipping/Coupon Changes */}
+                                {parsedCheckoutErrors && !hasProductIssues(parsedCheckoutErrors) && (
+                                    <div className="mt-4 space-y-2">
+                                        {/* Shipping Update Alert */}
+                                        {parsedCheckoutErrors.shipping && (
+                                            <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                                                <Icon.Truck className="text-blue text-xl flex-shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="font-semibold text-blue-900">Shipping Cost Updated</p>
+                                                    <p className="text-blue-700 text-xs mt-1">
+                                                        {parsedCheckoutErrors.shipping.reason} (₦
+                                                        {parsedCheckoutErrors.shipping.previousCost.toLocaleString()} → ₦
+                                                        {parsedCheckoutErrors.shipping.currentCost.toLocaleString()})
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Coupon Rejection Alert */}
+                                        {parsedCheckoutErrors.coupons && parsedCheckoutErrors.coupons.length > 0 && (
+                                            <div className="flex items-start gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+                                                <Icon.Warning className="text-yellow-600 text-xl flex-shrink-0 mt-0.5" />
+                                                <div className="flex-1">
+                                                    <p className="font-semibold text-yellow-900 mb-1">Coupon Issue</p>
+                                                    {parsedCheckoutErrors.coupons.map((coupon, idx) => (
+                                                        <p key={idx} className="text-yellow-700 text-xs">
+                                                            • {coupon.code}: {coupon.reason}
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Total-Only Error (Blocking) */}
+                                {parsedCheckoutErrors?.total && (
+                                    <div className="mt-4 flex items-start gap-2 p-4 bg-red-50 border border-red-200 rounded-lg text-sm">
+                                        <Icon.XCircle className="text-red-600 text-xl flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="font-semibold text-red-900">Checkout Error</p>
+                                            <p className="text-red-700 text-xs mt-1">{parsedCheckoutErrors.total.message}</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <Footer />
+
+            {/* Correction Review Modal */}
+            {parsedCheckoutErrors && showCorrectionModal && (
+                <CorrectionReviewModal
+                    isOpen={true}
+                    checkoutErrors={parsedCheckoutErrors}
+                    onAcceptAll={handleAcceptCorrections}
+                    onClose={() => setShowCorrectionModal(false)}
+                />
+            )}
+
         </>
+
     );
 };
 

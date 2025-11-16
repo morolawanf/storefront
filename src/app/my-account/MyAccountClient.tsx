@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import TopNavOne from '@/components/Header/TopNav/TopNavOne';
-import MenuOne from '@/components/Header/Menu/MenuOne';
 import Breadcrumb from '@/components/Breadcrumb/Breadcrumb';
 import Footer from '@/components/Footer/Footer';
 import Sidebar from '@/components/MyAccount/Sidebar';
@@ -35,7 +34,6 @@ export default function MyAccountClient() {
           </div>
         </div>
       </div>
-      <Footer />
       <div
         className={`modal-order-detail-block flex items-center justify-center`}
         onClick={() => setOpenDetail(false)}
