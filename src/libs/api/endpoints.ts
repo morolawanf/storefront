@@ -152,6 +152,14 @@ export const api = {
     locationsByCountry: (country: string) => `/logistics/locations/${encodeURIComponent(country)}`,
     cartFlatShipping: '/logistics/cart/flat-shipping',
   },
+
+  // Coupon endpoints
+  coupons: {
+    list: '/coupons',
+    cart: '/coupons/cart',
+    byCode: (code: string) => `/coupons/${encodeURIComponent(code)}`,
+    validate: '/coupons/validate',
+  },
 } as const;
 
 export default api;

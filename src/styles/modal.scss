@@ -101,6 +101,10 @@
 
     &.open {
       right: 20px;
+
+      @media screen and (max-width: 767.98px) {
+        right: 9px;
+      }
     }
 
     .remove-cart-btn {
@@ -153,7 +157,7 @@
 
     @media (max-width: 575.98px) {
       width: unset;
-      left: 20px;
+      left: 9px;
       top: 30px;
       height: calc(100vh - 60px);
 
@@ -330,7 +334,7 @@
     }
 
     @media (max-width: 1023.98px) {
-      width: 460px;
+      width: 500px;
 
       .list-product {
         max-height: calc(100% - 210px - 212px);

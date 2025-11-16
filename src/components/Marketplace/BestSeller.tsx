@@ -1,12 +1,11 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react'
-import { ProductType } from '@/type/ProductType';
-import { motion } from 'motion/react'
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import Product from '../Product/Product';
 
 interface Props {
-    data: Array<ProductType>;
+    data: Array<any>;
     start: number;
     limit: number;
 }
@@ -19,8 +18,7 @@ const BestSeller: React.FC<Props> = ({ data, start, limit }) => {
     };
 
     const filteredProducts = data.filter((product) => product.category === activeTab);
-    console.log(activeTab);
-    
+
 
     return (
         <div className="tab-features-block style-marketplace md:pt-[60px] pt-10">
@@ -52,7 +50,7 @@ const BestSeller: React.FC<Props> = ({ data, start, limit }) => {
                 </div>
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default BestSeller
+export default BestSeller;

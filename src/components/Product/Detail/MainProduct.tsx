@@ -10,7 +10,6 @@ import 'swiper/css/bundle';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
 import SwiperCore from 'swiper/core';
 import { useCart } from '@/context/CartContext';
-import { useCart as useUnifiedCart } from '@/hooks/useCart';
 import { useModalCartContext } from '@/context/ModalCartContext';
 import { useWishlistStore } from '@/store/useWishlistStore';
 import { useAddToWishlist, useRemoveFromWishlist } from '@/hooks/mutations/useWishlistMutations';
@@ -58,7 +57,7 @@ const Sale: React.FC<Props> = ({ slug }) => {
     const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
     const [activeTab, setActiveTab] = useState<string | undefined>('description');
     const [quantity, setQuantity] = useState<number>(1);
-    const { addToCart, updateCart, cartState } = useCart();
+    const { addToCart } = useCart();
     const { openModalCart } = useModalCartContext();
 
     // Zustand store for client-side wishlist state
@@ -75,9 +74,6 @@ const Sale: React.FC<Props> = ({ slug }) => {
     const { openModalWishlist } = useModalWishlistContext();
     const { addToCompare, removeFromCompare, compareState } = useCompare();
     const { openModalCompare } = useModalCompareContext();
-
-    // Modern cart management using unified useCart hook
-    const { addItem } = useUnifiedCart();
 
     // Debounce state for wishlist toggle (must be declared before any early returns)
     const [wishlistPending, setWishlistPending] = useState(false);
@@ -131,7 +127,7 @@ const Sale: React.FC<Props> = ({ slug }) => {
                 },
                 stock: productMain.stock,
                 originStock: productMain.originStock,
-                sku: productMain.sku,
+                sku: productMain.sku ?? '',
                 sale: null,
             };
 
@@ -358,9 +354,6 @@ const Sale: React.FC<Props> = ({ slug }) => {
         const newQty = quantity + 1;
         setQuantity(newQty);
         product.quantityPurchase = newQty;
-        const color = selectedAttributes['Color'] || selectedAttributes['Colour'] || '';
-        const size = selectedAttributes['Size'] || '';
-        updateCart(product.id, newQty, size, color);
     };
 
     const handleDecreaseQuantity = () => {
@@ -368,9 +361,6 @@ const Sale: React.FC<Props> = ({ slug }) => {
             const newQty = quantity - 1;
             setQuantity(newQty);
             product.quantityPurchase = newQty;
-            const color = selectedAttributes['Color'] || selectedAttributes['Colour'] || '';
-            const size = selectedAttributes['Size'] || '';
-            updateCart(product.id, newQty, size, color);
         }
     };
 
@@ -379,17 +369,11 @@ const Sale: React.FC<Props> = ({ slug }) => {
         const validQty = numValue <= 0 ? 1 : numValue;
         setQuantity(validQty);
         product.quantityPurchase = validQty;
-        const color = selectedAttributes['Color'] || selectedAttributes['Colour'] || '';
-        const size = selectedAttributes['Size'] || '';
-        updateCart(product.id, validQty, size, color);
     };
 
     const handleTierClick = (minQty: number) => {
         setQuantity(minQty);
         product.quantityPurchase = minQty;
-        const color = selectedAttributes['Color'] || selectedAttributes['Colour'] || '';
-        const size = selectedAttributes['Size'] || '';
-        updateCart(product.id, minQty, size, color);
     };
 
     const handleAddToCart = () => {
@@ -401,12 +385,8 @@ const Sale: React.FC<Props> = ({ slug }) => {
             if (value) attributes.push({ name, value });
         });
 
-        // Pass full product object - hook handles all serialization/calculations
-        addItem({
-            product: productMain,
-            qty: quantity,
-            attributes,
-        });
+        // Add to cart with full product and selected attributes
+        addToCart(productMain, quantity, attributes);
         openModalCart();
     };
 
@@ -565,7 +545,7 @@ const Sale: React.FC<Props> = ({ slug }) => {
                             </div>
                             <div className="list-action mt-6 gap-4 flex-col">
                                 <SalesCountdownTimer sale={normalizedSale} salesType={productMain.sale?.type} />
-                                <LimitedProductProgress sold={product.sold} totalQuantity={product.quantity} salesType={productMain.sale?.type} />
+                                <LimitedProductProgress sold={product.sold ?? 0} totalQuantity={product.quantity ?? 0} salesType={productMain.sale?.type} />
 
                                 {/* Color Attribute - Rendered with Color package */}
                                 {colors.length > 0 && (

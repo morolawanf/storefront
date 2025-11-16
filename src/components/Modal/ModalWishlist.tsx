@@ -43,8 +43,6 @@ const ModalWishlist = () => {
         });
     };
 
-    console.log(wishlistItems);
-
     return (
         <>
             <div className={`modal-wishlist-block`} onClick={closeModalWishlist}>

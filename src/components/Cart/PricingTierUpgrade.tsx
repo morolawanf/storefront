@@ -1,38 +1,44 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import * as Icon from '@phosphor-icons/react/dist/ssr';
-import type { GuestCartItem } from '@/libs/guestCart';
+import type { CartItem } from '@/context/CartContext';
+import { calculateCartItemPricing } from '@/utils/cart-pricing';
 import { calculateNextTierSavings, getTierDescription, formatTierRange } from '@/utils/pricingTiers';
 
 interface PricingTierUpgradeProps {
-    item: GuestCartItem;
+    item: CartItem;
     currentQty: number;
     onQuantityChange?: (newQty: number) => void;
 }
 
-const PricingTierUpgrade: React.FC<PricingTierUpgradeProps> = ({
+const PricingTierUpgrade: React.FC<PricingTierUpgradeProps> = React.memo(({
     item,
     currentQty,
     onQuantityChange,
 }) => {
-    // Get product details for pricing tiers
-    const productDetails = item.productDetails;
-    const pricingTiers = productDetails?.pricingTiers;
+    const pricingTiers = item.pricingTiers;
+
+    // Memoize pricing calculation to prevent recalculation on every render
+    const pricing = useMemo(() => {
+        return calculateCartItemPricing({ ...item, qty: currentQty });
+    }, [item, currentQty]);
+
+    const basePrice = item.price || 0;
+
+    // Memoize next tier calculation
+    const nextTierInfo = useMemo(() => {
+        return calculateNextTierSavings(
+            currentQty,
+            pricing.unitPrice,
+            basePrice,
+            pricingTiers || []
+        );
+    }, [currentQty, pricing.unitPrice, basePrice, pricingTiers]);
 
     if (!pricingTiers || pricingTiers.length === 0) {
         return null;
     }
-
-    // Calculate base price (before any discounts/tiers)
-    const basePrice = productDetails?.price ?? item.unitPrice;
-
-    const nextTierInfo = calculateNextTierSavings(
-        currentQty,
-        item.unitPrice,
-        basePrice,
-        pricingTiers
-    );
 
     if (!nextTierInfo) {
         // User is already at the highest tier
@@ -48,27 +54,31 @@ const PricingTierUpgrade: React.FC<PricingTierUpgradeProps> = ({
 
     if (!nextTier) return null;
 
-    const savingsPerUnit = item.unitPrice - potentialUnitPrice;
+    const savingsPerUnit = pricing.unitPrice - potentialUnitPrice;
 
     return (
-        <div className="mt-1.5">
-            <div className="flex items-center gap-1.5 text-xs text-blue-600">
-                <Icon.TrendUp size={12} className="flex-shrink-0" />
-                <span>
-                    Buy {qtyNeeded} more: <span className="font-semibold">{getTierDescription(nextTier)}</span>
-                    {' '}<span className="text-green-600">(save ${savingsPerUnit.toFixed(2)}/unit)</span>
-                    {onQuantityChange && (
-                        <button
-                            onClick={() => onQuantityChange(nextTier.minQty)}
-                            className="ml-2 px-1.5 py-0.5 bg-blue-600 text-white rounded text-[10px] font-semibold hover:bg-blue-700 transition-colors"
-                        >
-                            +{qtyNeeded}
-                        </button>
-                    )}
-                </span>
+        <div className="mt-9">
+            <div className="flex items-center gap-0.5 text-sm">
+                {/* <Icon.Tag weight='fill' size={14} className="text-green-900 flex-shrink-0" /> */}
+                {onQuantityChange ? (
+                    <button
+                        onClick={() => onQuantityChange(nextTier.minQty)}
+                        className="text-black hover:text-green-600 transition-colors text-left text-[11px]"
+                    >
+                        <span className="font-semibold p-1 px-1.5 rounded-md cursor-pointer bg-black text-white text-[12px] hover:scale-105">Buy {qtyNeeded} more</span>
+                        {' : '}<span className="text-green-600 ">(to save <span className="font-semibold text-green-600">{getTierDescription(nextTier)}</span> )</span>
+                    </button>
+                ) : (
+                    <span className="text-black">
+                        Buy <span className="font-semibold">{qtyNeeded}</span> more: <span className="font-semibold text-green-600">{getTierDescription(nextTier)}</span>
+                        {' '}<span className="text-green-600">(save ${savingsPerUnit.toFixed(2)}/unit)</span>
+                    </span>
+                )}
             </div>
         </div>
     );
-};
+});
+
+PricingTierUpgrade.displayName = 'PricingTierUpgrade';
 
 export default PricingTierUpgrade;

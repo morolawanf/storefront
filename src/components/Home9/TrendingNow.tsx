@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import React from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
+import React from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Navigation } from 'swiper/modules';
 import 'swiper/css/bundle';
@@ -12,8 +12,7 @@ import { getCdnUrl } from '@/libs/cdn-url';
 
 
 const TrendingNow = () => {
-    const { data: TopCategories, isLoading } = useTopCategories()
-    console.log(TopCategories);
+    const { data: TopCategories, isLoading } = useTopCategories();
 
 
     if (isLoading) {
@@ -92,7 +91,7 @@ const TrendingNow = () => {
                 </div>
             </div>
         </>
-    )
-}
+    );
+};
 
-export default TrendingNow
+export default TrendingNow;

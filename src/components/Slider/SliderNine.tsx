@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import React, { Component } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
+import React, { Component } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Pagination } from 'swiper/modules';
 import 'swiper/css/bundle';
@@ -15,9 +15,8 @@ import { usePathname } from 'next/navigation';
 const SliderNine = () => {
     const isHomePage = usePathname();
 
-    if (isHomePage !== '/') return null;
     const { data } = useGroupedBanners(isHomePage === '/');
-    console.log('SliderNine banners data:', isHomePage === '/', data);
+    if (isHomePage !== '/') return null;
     const TopGroupBanners = data?.A || [];
 
     if (!data) return null;
@@ -103,7 +102,7 @@ const SliderNine = () => {
                 </div>
             </div>
         </>
-    )
-}
+    );
+};
 
-export default SliderNine
+export default SliderNine;

@@ -17,8 +17,6 @@ export default function HomeClient() {
     const { data: weekProducts, isLoading: isLoadingWeek } = useWeekProducts(1);
     const { data: topSoldProducts, isLoading: isLoadingTopSold } = useTopSoldProducts(1);
 
-    console.log('deals', dealsOfTheDay);
-
     // Convert ProductListItem to ProductDetail (legacy type compatibility)
     const convertProducts = (data: any): ProductDetail[] => {
         if (!data?.data) return [];

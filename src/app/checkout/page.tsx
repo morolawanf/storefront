@@ -3,15 +3,14 @@ import React, { useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import Image from 'next/image';
 import Link from 'next/link';
-import TopNavOne from '@/components/Header/TopNav/TopNavOne';
-import MenuOne from '@/components/Header/Menu/MenuOne';
 import Breadcrumb from '@/components/Breadcrumb/Breadcrumb';
 import Footer from '@/components/Footer/Footer';
 import { ProductDetail } from '@/types/product';
 import productData from '@/data/Product.json';
 import Product from '@/components/Product/Product';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
-import { useCart } from '@/hooks/useCart';
+import { useCart } from '@/context/CartContext';
+import { calculateCartTotals, calculateCartItemPricing } from '@/utils/cart-pricing';
 import type { CartSnapshotPayload } from '@/types/cart';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getCdnUrl } from '@/libs/cdn-url';
@@ -20,6 +19,7 @@ import { apiClient, handleApiError } from '@/libs/api/axios';
 import api from '@/libs/api/endpoints';
 import CheckoutAlerts from '@/components/Checkout/CheckoutAlerts';
 import CheckoutButton from '@/components/Checkout/CheckoutButton';
+import { useCheckoutStore } from '@/store/useCheckoutStore';
 
 type ShippingFormState = {
     firstName: string;
@@ -55,7 +55,7 @@ type FlatCartShippingResponse = {
 const currencyFormatter = new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
 });
 
 const formatCurrency = (value: number) => currencyFormatter.format(value);
@@ -122,23 +122,27 @@ type SecureCheckoutSuccessResponse = {
 const Checkout = () => {
     const searchParams = useSearchParams();
     const router = useRouter();
-    let discount = searchParams.get('discount');
-    let ship = searchParams.get('ship');
-    const [currentShippingMethod, setCurrentShippingMethod] = React.useState<string>(searchParams.get('method') || 'pickup');
+
+    // Use Zustand store for checkout state
+    const { shippingMethod: storedShippingMethod, discountInfo, setShippingMethod: setCheckoutShippingMethod } = useCheckoutStore();
+    const [currentShippingMethod, setCurrentShippingMethod] = React.useState<string>(storedShippingMethod);
     const shippingMethod = currentShippingMethod; // pickup, normal, express
 
     const {
-        cart: unifiedCart,
         items,
-        subtotal,
-        total,
         isLoading,
-        error,
         isGuest,
-        applyCartSnapshot,
         refreshCart,
-        serverCartQuery,
     } = useCart();
+
+    // Calculate subtotal from items using ModalCart's exact pricing method
+    const subtotal = React.useMemo(() => {
+        return items.reduce((sum, item) => {
+            const pricing = calculateCartItemPricing(item);
+            return sum + pricing.totalPrice;
+        }, 0);
+    }, [items]);
+
     const [activePayment, setActivePayment] = useState<string>('credit-card');
     const [isShippingExpanded, setIsShippingExpanded] = useState<boolean>(shippingMethod !== 'pickup');
     const [isNotesExpanded, setIsNotesExpanded] = useState<boolean>(false);
@@ -262,11 +266,12 @@ const Checkout = () => {
     const availableLGAs: LogisticsLocationConfig[] = selectedStateConfig?.lgas ?? [];
 
     const appliedCouponCodes = useMemo(() => {
-        if (isGuest || !serverCartQuery?.data) {
-            return [] as string[];
+        // Use discount info from checkout store
+        if (discountInfo?.couponCode) {
+            return [discountInfo.couponCode];
         }
-        return serverCartQuery.data.appliedCoupons?.map((coupon) => coupon.code) ?? [];
-    }, [isGuest, serverCartQuery?.data]);
+        return [] as string[];
+    }, [discountInfo]);
 
     const selectedLocationMeta = useMemo(() => {
         if (!selectedStateConfig) {
@@ -295,7 +300,7 @@ const Checkout = () => {
     }, [selectedStateConfig, shippingForm.city, shippingForm.lga]);
 
     // Shipping calculation state
-    const [calculatedShippingCost, setCalculatedShippingCost] = useState<number | null>(Number(ship) || null);
+    const [calculatedShippingCost, setCalculatedShippingCost] = useState<number | null>(null);
     const [isCalculatingShipping, setIsCalculatingShipping] = useState<boolean>(false);
     const [shippingCalculationError, setShippingCalculationError] = useState<string | null>(null);
     const [pendingCorrections, setPendingCorrections] = useState<CheckoutCorrectionPayload | null>(null);
@@ -311,17 +316,13 @@ const Checkout = () => {
         return { totalItems, uniqueProducts };
     }, [items]);
 
-    const serverCartDiscount = !isGuest && serverCartQuery?.data
-        ? serverCartQuery.data.totalDiscount ?? serverCartQuery.data.couponDiscount ?? 0
-        : 0;
-
-    const unifiedCartDiscount = unifiedCart?.totalDiscount ?? 0;
-
+    // Use discount from Zustand store
     const resolvedDiscount = pendingCorrections
         ? pendingCorrections.correctedCart.totalDiscount ?? pendingCorrections.correctedCart.couponDiscount ?? 0
-        : serverCartDiscount || unifiedCartDiscount || Number(discount || 0) || 0;
+        : discountInfo?.amount || 0;
 
     const resolvedSubtotal = pendingCorrections?.correctedCart.subtotal ?? subtotal;
+    console.log(resolvedSubtotal);
 
     const resolvedShippingCost = shippingMethod === 'pickup'
         ? 0
@@ -345,19 +346,30 @@ const Checkout = () => {
         const etaDays = deliveryType === 'shipping' ? selectedLocationMeta?.etaDays ?? 0 : 0;
 
         return {
-            items: items.map((item) => ({
-                _id: item._id,
-                product: item.product,
-                qty: item.qty,
-                selectedAttributes: item.selectedAttributes,
-                unitPrice: item.unitPrice,
-                totalPrice: item.totalPrice,
-                sale: item.sale,
-                saleVariantIndex: item.saleVariantIndex,
-                appliedDiscount: item.appliedDiscount,
-                discountAmount: item.discountAmount,
-                productSnapshot: item.productSnapshot,
-            })),
+            items: items.map((item) => {
+                const pricing = calculateCartItemPricing(item);
+                return {
+                    _id: item._id,
+                    product: item._id || item.id, // Use product ID
+                    qty: item.qty,
+                    selectedAttributes: item.selectedAttributes,
+                    unitPrice: pricing.unitPrice,
+                    totalPrice: pricing.totalPrice,
+                    sale: pricing.sale,
+                    saleVariantIndex: item.selectedVariant,
+                    appliedDiscount: pricing.appliedDiscount, // Cumulative discount (sale + tier)
+                    saleDiscount: pricing.saleDiscount, // Sale discount only
+                    tierDiscount: pricing.tierDiscount, // Tier discount only
+                    pricingTier: pricing.pricingTier, // Tier info for validation
+                    discountAmount: pricing.discountAmount,
+                    productSnapshot: {
+                        name: item.name || 'Product',
+                        price: item.price || 0,
+                        sku: item.sku || '',
+                        image: item.description_images?.find((img) => img.cover_image)?.url || item.description_images?.[0]?.url || '',
+                    },
+                };
+            }),
             shippingAddress:
                 deliveryType === 'shipping'
                     ? {
@@ -377,8 +389,8 @@ const Checkout = () => {
             couponCodes: appliedCouponCodes,
             taxPrice: 0,
             subtotal,
-            total,
-            totalDiscount: unifiedCart?.totalDiscount ?? 0,
+            total: subtotal - resolvedDiscount + shippingCostValue,
+            totalDiscount: resolvedDiscount,
             estimatedShipping: {
                 cost: shippingCostValue,
                 days: etaDays,
@@ -386,7 +398,7 @@ const Checkout = () => {
             deliveryType,
             shippingCost: shippingCostValue,
         };
-    }, [shippingMethod, calculatedShippingCost, selectedLocationMeta, items, shippingForm, activePayment, appliedCouponCodes, subtotal, total, unifiedCart?.totalDiscount]);
+    }, [shippingMethod, calculatedShippingCost, selectedLocationMeta, items, shippingForm, activePayment, appliedCouponCodes, subtotal, resolvedDiscount]);
 
     const handleAcceptCorrections = useCallback(async () => {
         if (!pendingCorrections) {
@@ -398,35 +410,10 @@ const Checkout = () => {
         setCheckoutSuccess(null);
 
         try {
-            const snapshot: CartSnapshotPayload = {
-                items: pendingCorrections.correctedCart.items.map((item) => ({
-                    _id: item._id,
-                    product: item.product,
-                    qty: item.qty,
-                    unitPrice: item.unitPrice,
-                    totalPrice: item.totalPrice,
-                    selectedAttributes: item.selectedAttributes,
-                    productSnapshot: item.productSnapshot,
-                    sale: item.sale,
-                    saleVariantIndex: item.saleVariantIndex,
-                    appliedDiscount: item.appliedDiscount,
-                    discountAmount: item.discountAmount,
-                })),
-                subtotal: pendingCorrections.correctedCart.subtotal,
-                total: pendingCorrections.correctedCart.total,
-                totalDiscount:
-                    pendingCorrections.correctedCart.totalDiscount ??
-                    pendingCorrections.correctedCart.couponDiscount ??
-                    0,
-                estimatedShipping: pendingCorrections.correctedCart.estimatedShipping,
-            };
+            // Simply refresh cart to get latest data
+            await refreshCart();
 
-            applyCartSnapshot(snapshot);
-
-            if (!isGuest) {
-                await refreshCart();
-            }
-
+            // Update shipping cost from corrections
             const updatedShippingCost = pendingCorrections.correctedCart.estimatedShipping?.cost ?? pendingCorrections.shippingCost;
             setCalculatedShippingCost(updatedShippingCost);
             setShippingCalculationError(null);
@@ -436,7 +423,7 @@ const Checkout = () => {
         } finally {
             setIsAcceptingCorrections(false);
         }
-    }, [pendingCorrections, applyCartSnapshot, isGuest, refreshCart]);
+    }, [pendingCorrections, refreshCart]);
 
     const handleSubmitCheckout = useCallback(async () => {
         if (items.length === 0) {
@@ -486,14 +473,6 @@ const Checkout = () => {
             if (!isGuest) {
                 const refreshResult = refreshCart();
                 await Promise.resolve(refreshResult);
-            } else {
-                applyCartSnapshot({
-                    items: [],
-                    subtotal: 0,
-                    total: 0,
-                    totalDiscount: 0,
-                    estimatedShipping: { cost: 0, days: 0 },
-                });
             }
 
             if (typeof successPayload.order.shippingPrice === 'number') {
@@ -519,7 +498,6 @@ const Checkout = () => {
         buildCheckoutPayload,
         isGuest,
         refreshCart,
-        applyCartSnapshot,
         router,
     ]);
 
@@ -583,13 +561,16 @@ const Checkout = () => {
             setShippingCalculationError(null);
             setCalculatedShippingCost(null);
 
-            const cartItemsPayload = items.map((item) => ({
-                product: item.product,
-                qty: item.qty,
-                selectedAttributes: item.selectedAttributes,
-                unitPrice: item.unitPrice,
-                totalPrice: item.totalPrice ?? item.unitPrice * item.qty,
-            }));
+            const cartItemsPayload = items.map((item) => {
+                const pricing = calculateCartItemPricing(item);
+                return {
+                    product: item._id || item.id,
+                    qty: item.qty,
+                    selectedAttributes: item.selectedAttributes,
+                    unitPrice: pricing.unitPrice,
+                    totalPrice: pricing.totalPrice,
+                };
+            });
 
             const shippingAddressPayload = {
                 country: shippingForm.country,
@@ -704,16 +685,18 @@ const Checkout = () => {
         setIsChangingShippingMethod(false);
         setIsShippingExpanded(newMethod !== 'pickup');
 
-        // Update URL without reload
-        router.replace(`/checkout?discount=${discount || 0}&ship=${newShipCost}&method=${newMethod}`, {
+        // Update URL without reload - shipping method now managed by Zustand
+        router.replace('/checkout', {
             scroll: false
         });
     };
 
     return (
         <>
-            <div id="header" className='relative w-full'>
-                <Breadcrumb heading='Shopping cart' subHeading='Shopping cart' />
+            <div className="main-content w-full h-full flex flex-col items-center justify-center relative z-[1]">
+                <div className="text-content">
+                    <div className="heading2 text-center m4-2">Checkout</div>
+                </div>
             </div>
             <div className="cart-block md:py-20 py-10">
                 <div className="container">
@@ -1114,10 +1097,7 @@ const Checkout = () => {
                                                     <span className="whitespace-nowrap">{cartStats.totalItems} items</span>
                                                     <span className="hidden xs:inline">•</span>
                                                     <span className="whitespace-nowrap">{cartStats.uniqueProducts} products</span>
-                                                    <span className="hidden xs:inline">•</span>
-                                                    <span className="font-semibold text-blue whitespace-nowrap">
-                                                        {resolvedTotal !== null ? formatCurrency(resolvedTotal) : formatCurrency(resolvedSubtotal)}
-                                                    </span>
+
                                                 </div>
                                             )}
                                         </div>
@@ -1139,13 +1119,6 @@ const Checkout = () => {
                                                     <p className='text-button text-secondary'>Loading cart...</p>
                                                 </div>
                                             </div>
-                                        ) : error ? (
-                                            <div className="flex items-center justify-center py-10">
-                                                <div className="flex flex-col items-center gap-3 text-red-600">
-                                                    <Icon.WarningCircle size={32} weight="bold" />
-                                                    <p className='text-button'>Error loading cart</p>
-                                                </div>
-                                            </div>
                                         ) : items.length === 0 ? (
                                             <div className="flex items-center justify-center py-10">
                                                 <div className="flex flex-col items-center gap-3 text-secondary">
@@ -1155,19 +1128,33 @@ const Checkout = () => {
                                             </div>
                                         ) : (
                                             items.map((item) => {
-                                                const productDetails = item.productDetails;
-                                                const productSnapshot = item.productSnapshot ?? undefined;
-                                                const productName = productDetails?.name ?? productSnapshot?.name ?? 'Product';
-                                                const productSku = productDetails?.sku ?? productSnapshot?.sku;
+                                                // Use ModalCart's exact pricing calculation method
+                                                const pricing = calculateCartItemPricing(item);
+
+                                                const itemId = item._id || item.id;
+                                                const productName = item.name || 'Product';
                                                 const productImagePath =
-                                                    productDetails?.description_images?.find((img) => img.cover_image)?.url ??
-                                                    productDetails?.description_images?.[0]?.url ??
-                                                    productSnapshot?.image;
+                                                    item.description_images?.find((img) => img.cover_image)?.url ??
+                                                    item.description_images?.[0]?.url;
                                                 const productImageUrl = productImagePath ? getCdnUrl(productImagePath) : '/images/placeholder.png';
 
+                                                // Check for active sale (not pricing tier discount)
+                                                const hasSale = !!pricing.sale;
+                                                const salePercentage = hasSale ? Math.round(pricing.saleDiscount) : 0;
+
+                                                // Check for pricing tier
+                                                const hasPricingTier = !!pricing.pricingTier;
+
+                                                // Show price slash if there's EITHER a sale OR pricing tier discount
+                                                const hasDiscount = hasSale || hasPricingTier;
+
+                                                // Original price before any discounts
+                                                const originalPrice = pricing.basePrice;
+
                                                 return (
-                                                    <div key={item._id} className="item flex items-start gap-2 sm:gap-3 md:gap-4 py-3 sm:py-4 md:py-5 border-b border-line last:border-b-0">
-                                                        <div className="bg-img w-[60px] sm:w-[70px] md:w-[80px] aspect-square flex-shrink-0 rounded-lg overflow-hidden border border-line">
+                                                    <div key={itemId} className="item flex items-start gap-3 md:gap-4 py-3 md:py-4 border-b border-line last:border-b-0">
+                                                        {/* Product Image */}
+                                                        <div className="bg-img w-[60px] md:w-[70px] aspect-square flex-shrink-0 rounded-lg overflow-hidden border border-line">
                                                             <Image
                                                                 src={productImageUrl}
                                                                 width={200}
@@ -1176,63 +1163,57 @@ const Checkout = () => {
                                                                 className='w-full h-full object-cover'
                                                             />
                                                         </div>
+
                                                         <div className="flex-1 min-w-0">
-                                                            <div className="name text-sm sm:text-base font-medium line-clamp-2">{productName}</div>
+                                                            {/* Product Name */}
+                                                            <div className="name text-sm font-medium line-clamp-2 mb-2">{productName}</div>
 
-                                                            {/* SKU Badge */}
-                                                            {productSku && (
-                                                                <div className="mt-2">
-                                                                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-surface rounded text-xs text-secondary">
-                                                                        <Icon.Barcode size={12} />
-                                                                        {productSku}
-                                                                    </span>
-                                                                </div>
-                                                            )}
+                                                            {/* Quantity */}
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <span className="text-xs text-secondary">Qty:</span>
+                                                                <span className="text-sm font-semibold">{item.qty}</span>
+                                                            </div>
 
-                                                            {/* Attributes */}
-                                                            {item.selectedAttributes.length > 0 && (
-                                                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                                                    {item.selectedAttributes.map((attr, idx) => (
-                                                                        <span
-                                                                            key={idx}
-                                                                            className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-md capitalize"
-                                                                        >
-                                                                            {attr.value}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-
-                                                            {/* Sale Badge */}
-                                                            {item.appliedDiscount && item.appliedDiscount > 0 && (
-                                                                <div className="mt-2">
+                                                            {/* Badges */}
+                                                            <div className="flex flex-wrap gap-2 mb-2">
+                                                                {/* Sale Badge */}
+                                                                {hasSale && (
                                                                     <span className="inline-block text-[10px] bg-red text-white px-2 py-0.5 rounded font-bold uppercase tracking-wide">
-                                                                        SALE {Math.round(item.appliedDiscount)}% OFF
+                                                                        SALE {salePercentage}% OFF
                                                                     </span>
-                                                                </div>
-                                                            )}
+                                                                )}
 
-                                                            {/* Price & Quantity */}
-                                                            <div className="flex items-center justify-between mt-3">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-secondary text-sm">Qty:</span>
-                                                                    <span className="text-button">{item.qty}</span>
-                                                                </div>
-                                                                <div className="text-right">
-                                                                    <div className="text-button text-blue">${(item.unitPrice * item.qty).toFixed(2)}</div>
-                                                                    {item.appliedDiscount && item.appliedDiscount > 0 ? (
-                                                                        <div className="text-xs">
+                                                                {/* Bulk/Pricing Tier Badge */}
+                                                                {hasPricingTier && (
+                                                                    <span className="inline-block text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded font-semibold uppercase">
+                                                                        BULK DEALS
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Pricing */}
+                                                            <div className="flex items-center justify-between mt-2">
+                                                                {/* Unit Price with slash if discounted */}
+                                                                <div className="text-xs">
+                                                                    {hasDiscount ? (
+                                                                        <div className="flex items-center gap-2">
                                                                             <span className="text-secondary line-through">
-                                                                                ${(item.unitPrice / (1 - item.appliedDiscount / 100)).toFixed(2)}
+                                                                                ${originalPrice.toFixed(2)}
                                                                             </span>
-                                                                            <span className="text-red font-semibold ml-1">
-                                                                                ${item.unitPrice.toFixed(2)}
+                                                                            <span className="text-red font-medium">
+                                                                                ${pricing.unitPrice.toFixed(2)} each
                                                                             </span>
-                                                                            {' each'}
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="text-xs text-secondary">${item.unitPrice.toFixed(2)} each</div>
+                                                                        <span className="text-secondary">
+                                                                            ${pricing.unitPrice.toFixed(2)} each
+                                                                        </span>
                                                                     )}
+                                                                </div>
+
+                                                                {/* Total Price */}
+                                                                <div className="text-base font-bold text-blue">
+                                                                    ${pricing.totalPrice.toFixed(2)}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1252,13 +1233,13 @@ const Checkout = () => {
                                     </div>
 
                                     {/* Discount */}
-                                    {discount && Number(discount) > 0 && (
+                                    {resolvedDiscount > 0 && (
                                         <div className="flex justify-between items-center text-green-600">
                                             <span className="flex items-center gap-1 text-sm md:text-base">
                                                 <Icon.Tag size={16} weight="duotone" className="w-4 h-4 flex-shrink-0" />
-                                                Discount
+                                                Discount {discountInfo?.couponCode && `(${discountInfo.couponCode})`}
                                             </span>
-                                            <span className="font-semibold">-${Number(discount).toFixed(2)}</span>
+                                            <span className="font-semibold">-${resolvedDiscount.toFixed(2)}</span>
                                         </div>
                                     )}
 

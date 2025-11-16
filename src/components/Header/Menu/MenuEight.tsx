@@ -17,7 +17,7 @@ import { useModalSearchContext } from '@/context/ModalSearchContext';
 import { useCart } from '@/context/CartContext';
 import NavCategoriesComponent from './NavCategoriesComponent';
 import NavCategoriesMobile from './NavCategoriesMobile';
-import { useCartCount } from '@/hooks/useCart';
+import { useCartCount } from '@/context/CartContext';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useSearchHistory } from '@/hooks/useSearchHistory';
 import { useProductSearchAutocomplete } from '@/hooks/queries/useProducts';
@@ -96,8 +96,7 @@ const MenuEight = () => {
     const { openMenuMobile, handleMenuMobile } = useMenuMobile();
     const [openSubNavMobile, setOpenSubNavMobile] = useState<number | null>(null);
     const { openModalCart } = useModalCartContext();
-    const { cartState } = useCart();
-    const { count: cartCount } = useCartCount();
+    const cartCount = useCartCount();
     const { openModalWishlist } = useModalWishlistContext();
 
     const [searchKeyword, setSearchKeyword] = useState('');
@@ -263,7 +262,8 @@ const MenuEight = () => {
                                 </div>
                                 <div className="cart-icon flex items-center relative cursor-pointer" onClick={openModalCart}>
                                     <Icon.Handbag size={24} color='black' />
-                                    <span className="quantity cart-quantity absolute -right-1.5 -top-1.5 text-xs text-white bg-black w-4 h-4 flex items-center justify-center rounded-full">{cartCount}</span>
+                                    <span className="quantity cart-quantity absolute -right-2 -top-2 text-[10px] text-white bg-black w-4 h-4 !px-3 flex items-center justify-center rounded-full">{cartCount > 99 ? 
+                                    '99+' : cartCount}</span>
                                 </div>
                             </div>
                         </div>

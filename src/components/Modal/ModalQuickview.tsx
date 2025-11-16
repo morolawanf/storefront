@@ -15,7 +15,6 @@ import Rate from '../Other/Rate';
 import ModalSizeguide from './ModalSizeguide';
 import { useProductById } from '@/hooks/queries/useProducts';
 import { useSession } from 'next-auth/react';
-import { useCart as useUnifiedCart } from '@/hooks/useCart';
 import { getCdnUrl } from '@/libs/cdn-url';
 import Color from 'color';
 import {
@@ -37,15 +36,12 @@ const ModalQuickview = () => {
     const [activeColor, setActiveColor] = useState<string>('');
     const [activeSize, setActiveSize] = useState<string>('');
     const [quantity, setQuantity] = useState(1);
-    const { addToCart, updateCart, cartState } = useCart();
+    const { addToCart, items: cartItems } = useCart();
     const { openModalCart } = useModalCartContext();
     const { addToWishlist, removeFromWishlist, wishlistState } = useWishlist();
     const { openModalWishlist } = useModalWishlistContext();
     const { addToCompare, removeFromCompare, compareState } = useCompare();
     const { openModalCompare } = useModalCompareContext();
-
-    // Unified cart (local-first; server sync handled internally when logged in)
-    const { addItem } = useUnifiedCart();
 
     // Fetch product data with retry:0 for instant modal UX
     const { data: product, isLoading, error } = useProductById(selectedProductId || '', { retry: 0 });
@@ -179,12 +175,8 @@ const ModalQuickview = () => {
             }
         }
 
-        // Pass full product object - hook handles all serialization/calculations
-        addItem({
-            product: product,
-            qty: quantity,
-            attributes,
-        });
+        // Add to cart with full product and selected attributes
+        addToCart(product, quantity, attributes);
         openModalCart();
         closeQuickview();
     };

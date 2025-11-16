@@ -33,7 +33,7 @@ import {
 import { ProductVariant, ProductVariantChild } from '@/types/product';
 import { CheckCircleIcon } from '@phosphor-icons/react';
 import { useSession } from 'next-auth/react';
-import { useCart as useUnifiedCart } from '@/hooks/useCart';
+// Cart context already imported correctly at top
 
 interface ProductProps {
     data: ProductDetail | ProductListItem;
@@ -76,7 +76,9 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
     const [activeColor, setActiveColor] = useState<string>('');
     const [activeSize, setActiveSize] = useState<string>('');
     const [openQuickShop, setOpenQuickShop] = useState<boolean>(false);
-    const { addToCart, updateCart, cartState } = useCart();
+
+    // PRIMARY cart (Context API - client-first with background server sync)
+    const { addToCart, updateCart, items: cartItems, itemCount } = useCart();
     const { openModalCart } = useModalCartContext();
 
     // Zustand store for client-side wishlist state
@@ -96,9 +98,6 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
     const { openQuickview } = useModalQuickviewContext();
     const router = useRouter();
     const { data: session } = useSession();
-
-    // Unified cart hook (localStorage-first, server sync in background when authenticated)
-    const { addItem } = useUnifiedCart();
 
     // Narrow types for optional new fields without changing global ProductDetail
     type AttrChild = { name: string; colorCode?: string; };
@@ -200,12 +199,8 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
             attributes.push({ name: 'Size', value: activeSize });
         }
 
-        // Pass full product object - hook handles all serialization/calculations
-        addItem({
-            product: data,
-            qty,
-            attributes,
-        });
+        // Add full product to cart with quantity and selected attributes
+        addToCart(data, qty, attributes);
         openModalCart();
     };
 
@@ -272,7 +267,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                 },
                 stock: data.stock,
                 originStock: data.originStock,
-                sku: data.sku,
+                sku: data.sku!,
                 sale: null,
             };
 
@@ -371,7 +366,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
 
     const isNewProduct = useMemo(() => {
         if (saleInfo.hasActiveSale) return false;
-        const daysSinceCreation = - new Date() - new Date(data.createdAt).getTime() / (24 * 60 * 60 * 1000);
+        const daysSinceCreation = new Date().getTime() - new Date(data.createdAt!).getTime() / (24 * 60 * 60 * 1000);
         const isNew = daysSinceCreation <= 5;
         return isNew;
     }, [saleInfo.hasActiveSale, data.createdAt]);
@@ -626,7 +621,22 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                         </div>
                     </div>
                 </div>
-            ) : (
+            ) : null
+            }
+
+
+        </>
+    );
+};
+
+export default Product;
+
+
+
+/*
+
+
+(
                 <>
                     {type === "list" ? (
                         <>
@@ -811,7 +821,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                     )}
                 </>
             )
-            }
+----------------------
 
             {type === 'marketplace' ? (
                 <div className="product-item style-marketplace p-4 border border-line rounded-2xl" onClick={() => handleDetailProduct(data.id)}>
@@ -887,8 +897,5 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
             ) : (
                 <></>
             )}
-        </>
-    );
-};
 
-export default Product;
+            */

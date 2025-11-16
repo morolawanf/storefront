@@ -8,10 +8,25 @@ const ROUTES = {
   logisticsLocationsTree: '/general/logistics/locations-tree',
   logisticsLocationsByCountry: (country: string) =>
     `/general/logistics/locations/${encodeURIComponent(country)}`,
+
+  // Coupon endpoints
+  coupons: '/coupons',
+  cartCoupons: '/coupons/cart',
+  couponByCode: (code: string) => `/coupons/${encodeURIComponent(code)}`,
+  couponValidate: '/coupons/validate',
 } as const;
 
 type RoutesMap = typeof ROUTES;
 type RouteKey = keyof RoutesMap;
+
+// Helper type to handle both string and function routes
+type RouteValue<T> = T extends (...args: any[]) => string
+  ? (...args: Parameters<T>) => string
+  : string;
+
+type PrefixedRoutes = {
+  [K in RouteKey]: RouteValue<RoutesMap[K]>;
+};
 
 /**
  * Build a prefixed routes object given a base URL.
@@ -19,10 +34,15 @@ type RouteKey = keyof RoutesMap;
  *   const routes = buildPrefixedRoutes('https://api.example.com');
  *   routes.login === 'https://api.example.com/auth/login'
  */
-export function buildPrefixedRoutes(baseUrl: string) {
-  const obj = {} as Record<RouteKey, string>;
+export function buildPrefixedRoutes(baseUrl: string): PrefixedRoutes {
+  const obj = {} as any;
   (Object.keys(ROUTES) as RouteKey[]).forEach((key) => {
-    obj[key] = `${baseUrl}${ROUTES[key]}`;
+    const route = ROUTES[key];
+    if (typeof route === 'function') {
+      obj[key] = (param: string) => `${baseUrl}${(route as (p: string) => string)(param)}`;
+    } else {
+      obj[key] = `${baseUrl}${route}`;
+    }
   });
   return obj;
 }

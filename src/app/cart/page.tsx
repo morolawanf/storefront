@@ -3,12 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import TopNavOne from '@/components/Header/TopNav/TopNavOne';
-import MenuOne from '@/components/Header/Menu/MenuOne';
-import Breadcrumb from '@/components/Breadcrumb/Breadcrumb';
 import Footer from '@/components/Footer/Footer';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
-import { useCart } from '@/hooks/useCart';
+import { useCart } from '@/context/CartContext';
+import { calculateCartItemPricing } from '@/utils/cart-pricing';
 import { countdownTime } from '@/store/countdownTime';
 import { getCdnUrl } from '@/libs/cdn-url';
 import { useSession } from 'next-auth/react';
@@ -16,11 +14,16 @@ import { useLoginModalStore } from '@/store/useLoginModalStore';
 import { CartIcon } from '@/components/Icons';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import PricingTierUpgrade from '@/components/Cart/PricingTierUpgrade';
+import { useCartCoupons } from '@/hooks/useCoupons';
+import { useValidateCoupon } from '@/hooks/useValidateCoupon';
+import type { Coupon } from '@/types/coupon';
+import { useCheckoutStore } from '@/store/useCheckoutStore';
 const Cart = () => {
     const [timeLeft, setTimeLeft] = useState(countdownTime());
     const router = useRouter();
     const { status } = useSession();
     const { openLoginModal } = useLoginModalStore();
+    const { setShippingMethod: setCheckoutShippingMethod, setDiscountInfo } = useCheckoutStore();
     useEffect(() => {
         const timer = setInterval(() => {
             setTimeLeft(countdownTime());
@@ -40,8 +43,9 @@ const Cart = () => {
     }, []); // Only run once on mount
     const optimisticSubtotal = useMemo(() => {
         return cartItems.reduce((sum, item) => {
-            const qty = quantityMap[item._id] ?? item.qty;
-            return sum + qty * item.unitPrice;
+            const qty = quantityMap[item._id || item.id] ?? item.qty;
+            const pricing = calculateCartItemPricing({ ...item, qty });
+            return sum + pricing.unitPrice * qty;
         }, 0);
     }, [cartItems, quantityMap]);
 
@@ -51,7 +55,8 @@ const Cart = () => {
             let isSame = cartItems.length === Object.keys(prev).length;
 
             for (const item of cartItems) {
-                const existing = prev[item._id];
+                const itemId = item._id || item.id;
+                const existing = prev[itemId];
                 let value = existing;
 
                 if (existing == null) {
@@ -62,7 +67,7 @@ const Cart = () => {
                     isSame = false;
                 }
 
-                next[item._id] = value ?? item.qty;
+                next[itemId] = value ?? item.qty;
             }
 
             return isSame ? prev : next;
@@ -72,7 +77,8 @@ const Cart = () => {
     // Debounce quantity updates to avoid flooding the cart API
     useEffect(() => {
         for (const item of cartItems) {
-            const targetQty = debouncedQuantities[item._id];
+            const itemId = item._id || item.id;
+            const targetQty = debouncedQuantities[itemId];
             if (typeof targetQty !== 'number') {
                 continue;
             }
@@ -81,26 +87,32 @@ const Cart = () => {
 
             if (normalizedQty !== targetQty) {
                 setQuantityMap((prev) => {
-                    const current = prev[item._id] ?? item.qty;
+                    const current = prev[itemId] ?? item.qty;
                     if (current === normalizedQty) {
                         return prev;
                     }
-                    return { ...prev, [item._id]: normalizedQty };
+                    return { ...prev, [itemId]: normalizedQty };
                 });
             }
 
-            if (normalizedQty !== item.qty && item.isAvailable !== false) {
-                updateItem(item._id, { qty: normalizedQty });
+            if (normalizedQty !== item.qty) {
+                updateItem(item.cartItemId, { qty: normalizedQty });
             }
         }
     }, [debouncedQuantities, cartItems, updateItem]);
 
-    const moneyForFreeship = 150;
     const [totalCart, setTotalCart] = useState<number>(0);
     const [discountCart, setDiscountCart] = useState<number>(0);
-    const [shipCart, setShipCart] = useState<number>(30);
+    const [shippingMethod, setShippingMethod] = useState<'pickup' | 'normal' | 'express'>('normal');
     const [applyCode, setApplyCode] = useState<number>(0);
     const [savingsAmount, setSavingsAmount] = useState<number>(0);
+    const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+    const [couponError, setCouponError] = useState<string | null>(null);
+    const [manualCouponCode, setManualCouponCode] = useState<string>('');
+
+    // Fetch cart coupons
+    const { data: cartCoupons = [], isLoading: couponsLoading } = useCartCoupons();
+    const validateCouponMutation = useValidateCoupon();
 
     // Calculate total from cart items
     useEffect(() => {
@@ -115,22 +127,6 @@ const Cart = () => {
         }
     }, [totalCart, applyCode]);
 
-    // Handle shipping cost based on free shipping threshold
-    useEffect(() => {
-        if (cartItems.length === 0) {
-            setShipCart(0);
-        } else if (totalCart >= moneyForFreeship && shipCart !== 0) {
-            // Don't automatically set to 0, let user choose
-        } else if (totalCart < moneyForFreeship && cartItems.length > 0 && shipCart === 0) {
-            setShipCart(30); // Default to local shipping if below threshold
-        }
-    }, [totalCart, cartItems.length, moneyForFreeship, shipCart]);
-
-    // Calculate total savings
-    useEffect(() => {
-        setSavingsAmount(discountCart);
-    }, [discountCart]);
-
     const handleApplyCode = (minValue: number, discount: number) => {
         if (totalCart >= minValue) {
             setApplyCode(minValue);
@@ -140,16 +136,115 @@ const Cart = () => {
         }
     };
 
-    const redirectToCheckout = () => {
-        // Determine shipping method type based on shipCart value
-        if (status === 'unauthenticated') {
+    const handleApplyCoupon = (coupon: Coupon) => {
+        setCouponError(null);
 
-            // router.push(`/login`);
+        // Collect product IDs and category IDs from cart
+        const productIds = cartItems.map(item => item._id || item.id);
+        // Convert categories to string array, filtering out undefined/null
+        const categoryIds = cartItems
+            .map(item => item.category ? String(item.category) : null)
+            .filter((cat): cat is string => cat !== null);
+
+        validateCouponMutation.mutate({
+            code: coupon.coupon, // Use 'coupon' field from Coupon object
+            orderTotal: totalCart,
+            productIds,
+            categoryIds,
+        }, {
+            onSuccess: (data) => {
+                if (data.success && data.valid && data.data) {
+                    setAppliedCoupon(coupon);
+                    setDiscountCart(data.data.discount);
+                    setApplyCode(0); // Clear old discount code
+                } else {
+                    setCouponError(data.message || 'Coupon cannot be applied');
+                }
+            },
+            onError: (error) => {
+                setCouponError(error.message || 'Failed to validate coupon');
+            },
+        });
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setDiscountCart(0);
+        setCouponError(null);
+    };
+
+    const handleApplyManualCoupon = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!manualCouponCode.trim()) return;
+
+        setCouponError(null);
+
+        // Collect product IDs and category IDs from cart
+        const productIds = cartItems.map(item => item._id || item.id);
+        const categoryIds = cartItems
+            .map(item => item.category ? String(item.category) : null)
+            .filter((cat): cat is string => cat !== null);
+
+        validateCouponMutation.mutate({
+            code: manualCouponCode.trim().toUpperCase(),
+            orderTotal: totalCart,
+            productIds,
+            categoryIds,
+        }, {
+            onSuccess: (data) => {
+                if (data.success && data.valid && data.data) {
+                    // Create a temporary coupon object for display
+                    const tempCoupon: Coupon = {
+                        _id: data.data.coupon._id,
+                        coupon: data.data.coupon.code,
+                        discount: data.data.coupon.discount,
+                        discountType: data.data.coupon.discountType,
+                        minOrderValue: data.data.coupon.minOrderValue,
+                        endDate: '',
+                        couponType: 'normal',
+                        appliesTo: data.data.coupon.appliesTo,
+                        stackable: data.data.coupon.stackable,
+                    };
+                    setAppliedCoupon(tempCoupon);
+                    setDiscountCart(data.data.discount);
+                    setApplyCode(0); // Clear old discount code
+                    setManualCouponCode(''); // Clear input
+                } else {
+                    // Show specific error message from backend (e.g., "Coupon expired", "Not stackable", etc.)
+                    setCouponError(data.message || 'Coupon cannot be applied');
+                }
+            },
+            onError: (error) => {
+                setCouponError(error.message || 'Invalid coupon code');
+            },
+        });
+    };
+
+    const redirectToCheckout = () => {
+        if (status === 'unauthenticated') {
             openLoginModal();
             return;
         }
-        const shippingMethod = shipCart === 0 ? 'pickup' : shipCart === 30 ? 'normal' : 'express';
-        router.push(`/checkout?discount=${discountCart}&ship=${shipCart}&method=${shippingMethod}`);
+
+        // Save shipping method and discount info to checkout store
+        setCheckoutShippingMethod(shippingMethod as 'pickup' | 'normal' | 'express');
+
+        if (discountCart > 0 && appliedCoupon) {
+            setDiscountInfo({
+                amount: discountCart,
+                couponCode: appliedCoupon.coupon,
+                couponDetails: {
+                    code: appliedCoupon.coupon,
+                    discount: appliedCoupon.discount,
+                    discountType: appliedCoupon.discountType,
+                    minOrderValue: appliedCoupon.minOrderValue || 0,
+                },
+            });
+        } else {
+            setDiscountInfo(null);
+        }
+
+        router.push('/checkout');
     };
 
     return (
@@ -220,39 +315,35 @@ const Cart = () => {
                                         </div>
                                         <div className="list-product-main w-full mt-3">
                                             {cartItems.map((item) => {
-                                                const productDetails = item.productDetails;
-                                                const productSnapshot = (item as unknown as {
-                                                    productSnapshot?: {
-                                                        name?: string;
-                                                        price?: number;
-                                                        sku?: string | number;
-                                                        image?: string;
-                                                    };
-                                                }).productSnapshot;
-                                                const productName = productDetails?.name ?? productSnapshot?.name ?? 'Product';
+                                                const itemId = item._id || item.id;
+                                                const currentQty = quantityMap[itemId] ?? item.qty;
+
+                                                // Calculate pricing at render time
+                                                const pricing = calculateCartItemPricing({ ...item, qty: currentQty });
+
+                                                const productName = item.name || 'Product';
                                                 const productImagePath =
-                                                    productDetails?.description_images?.find((img) => img.cover_image)?.url ??
-                                                    productDetails?.description_images?.[0]?.url ??
-                                                    productSnapshot?.image;
+                                                    item.description_images?.find((img) => img.cover_image)?.url ??
+                                                    item.description_images?.[0]?.url;
                                                 const productImageUrl = productImagePath ? getCdnUrl(productImagePath) : '';
-                                                const isUnavailable = item.isAvailable === false;
-                                                const unavailableLabel = item.unavailableReason === 'variant_unavailable' ? 'Variant unavailable' : 'Out of stock';
-                                                const currentQty = quantityMap[item._id] ?? item.qty;
-                                                const displayTotal = currentQty * item.unitPrice;
+                                                const isUnavailable = false; // TODO: Check stock availability
+                                                const unavailableLabel = 'Out of stock';
+                                                const displayTotal = pricing.totalPrice;
 
-                                                // Calculate pricing tier info
-                                                const hasPricingTier = !!item.pricingTier;
-                                                const tierDiscount = hasPricingTier ? item.pricingTier?.value : null;
-                                                const tierStrategy = hasPricingTier ? item.pricingTier?.strategy : null;
+                                                // Pricing tier info
+                                                const hasPricingTier = !!pricing.pricingTier;
+                                                const tierDiscount = pricing.pricingTier?.value ?? null;
+                                                const tierStrategy = pricing.pricingTier?.strategy ?? null;
 
-                                                // Check if appliedDiscount exists
-                                                const hasDiscount = item.appliedDiscount && item.appliedDiscount > 0;
+                                                // Check if sale or discount exists
+                                                const hasSale = !!pricing.sale;
+                                                const hasDiscount = hasSale || hasPricingTier;
 
                                                 return (
                                                     <div
-                                                        className={`item flex md:mt-7 md:pb-7 mt-5 pb-5 border-b border-line w-full transition-colors rounded-lg md:p-4 ${isUnavailable ? 'bg-surface/50 opacity-80' : 'hover:bg-surface/50'
+                                                        className={`item flex mt-5 pb-5 border-b border-line w-full transition-colors rounded-lg md:p-4 ${isUnavailable ? 'bg-surface/50 opacity-80' : 'hover:bg-surface/50'
                                                             }`}
-                                                        key={item._id}
+                                                        key={itemId}
                                                     >
                                                         <div className="w-1/2">
                                                             <div className="flex items-center gap-6">
@@ -292,16 +383,14 @@ const Cart = () => {
                                                                     )}
                                                                     {/* Sale/Discount Badge */}
                                                                     <div className="mt-2 flex flex-wrap gap-2">
-                                                                        {item.appliedDiscount && item.appliedDiscount > 0 && (
+                                                                        {hasSale && (
                                                                             <span className="text-xs bg-red text-white px-2.5 py-1 rounded font-bold uppercase tracking-wide">
-                                                                                SALE {Math.round(item.appliedDiscount)}% OFF
+                                                                                SALE {Math.round(pricing.saleDiscount)}% OFF
                                                                             </span>
                                                                         )}
                                                                         {hasPricingTier && (
                                                                             <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded font-medium">
-                                                                                {tierStrategy === 'percentOff' && `${tierDiscount}% Bulk`}
-                                                                                {tierStrategy === 'amountOff' && `$${tierDiscount?.toFixed(2)} Off`}
-                                                                                {tierStrategy === 'fixedPrice' && `Bulk Price`}
+                                                                                Bulk Deals
                                                                             </span>
                                                                         )}
                                                                     </div>
@@ -310,55 +399,55 @@ const Cart = () => {
                                                                             Please adjust or remove this item before checkout.
                                                                         </div>
                                                                     )}
-                                                                    {/* Pricing Tier Upgrade Opportunity */}
-                                                                    {!isUnavailable && productDetails?.pricingTiers && (
-                                                                        <PricingTierUpgrade
-                                                                            item={item}
-                                                                            currentQty={currentQty}
-                                                                            onQuantityChange={(newQty) => {
-                                                                                setQuantityMap((prev) => ({
-                                                                                    ...prev,
-                                                                                    [item._id]: newQty,
-                                                                                }));
-                                                                            }}
-                                                                        />
-                                                                    )}
                                                                 </div>
                                                             </div>
+                                                            {/* Pricing Tier Upgrade Opportunity */}
+                                                            {!isUnavailable && item.pricingTiers && (
+                                                                <PricingTierUpgrade
+                                                                    item={item}
+                                                                    currentQty={currentQty}
+                                                                    onQuantityChange={(newQty) => {
+                                                                        setQuantityMap((prev) => ({
+                                                                            ...prev,
+                                                                            [itemId]: newQty,
+                                                                        }));
+                                                                    }}
+                                                                />
+                                                            )}
                                                         </div>
                                                         <div className="w-1/12 price flex flex-col items-center justify-center">
-                                                            {item.appliedDiscount && item.appliedDiscount > 0 ? (
+                                                            {hasDiscount ? (
                                                                 <>
                                                                     <div className="text-xs text-secondary line-through">
-                                                                        ${(item.unitPrice / (1 - item.appliedDiscount / 100)).toFixed(2)}
+                                                                        ${pricing.basePrice.toFixed(2)}
                                                                     </div>
                                                                     <div className="text-title text-center font-bold text-red mt-1">
-                                                                        ${item.unitPrice.toFixed(2)}
+                                                                        ${pricing.unitPrice.toFixed(2)}
                                                                     </div>
                                                                 </>
                                                             ) : (
-                                                                <div className="text-title text-center font-semibold">${item.unitPrice.toFixed(2)}</div>
+                                                                <div className="text-title text-center font-semibold">${pricing.unitPrice.toFixed(2)}</div>
                                                             )}
-                                                            {hasPricingTier && (
-                                                                <div className="text-[10px] text-blue-600 font-medium mt-0.5">
+                                                            {/* {hasPricingTier && (
+                                                                <div className="text-[10px] text-blue-600 font-medium">
                                                                     Tier price
                                                                 </div>
-                                                            )}
+                                                            )} */}
                                                         </div>
                                                         <div className="w-1/6 flex items-center justify-center">
-                                                            <div className="quantity-block bg-surface md:p-3 p-2 flex items-center justify-between rounded-lg border border-line md:w-[120px] flex-shrink-0 w-24 hover:border-black transition-colors">
+                                                            <div className="quantity-block bg-surface p-1.5 flex items-center justify-between rounded-lg border border-line md:w-[100px] flex-shrink-0 w-24 hover:border-black transition-colors">
                                                                 <Icon.Minus
                                                                     onClick={() => {
                                                                         if (isUnavailable) {
                                                                             return;
                                                                         }
                                                                         setQuantityMap((prev) => {
-                                                                            const previousQty = prev[item._id] ?? item.qty;
+                                                                            const previousQty = prev[itemId] ?? item.qty;
                                                                             const nextQty = Math.max(1, previousQty - 1);
                                                                             if (nextQty === previousQty) {
                                                                                 return prev;
                                                                             }
-                                                                            return { ...prev, [item._id]: nextQty };
+                                                                            return { ...prev, [itemId]: nextQty };
                                                                         });
                                                                     }}
                                                                     className={`text-base max-md:text-sm rounded p-1 transition-colors ${currentQty === 1 || isUnavailable
@@ -373,12 +462,12 @@ const Cart = () => {
                                                                             return;
                                                                         }
                                                                         setQuantityMap((prev) => {
-                                                                            const previousQty = prev[item._id] ?? item.qty;
+                                                                            const previousQty = prev[itemId] ?? item.qty;
                                                                             const nextQty = previousQty + 1;
                                                                             if (nextQty === previousQty) {
                                                                                 return prev;
                                                                             }
-                                                                            return { ...prev, [item._id]: nextQty };
+                                                                            return { ...prev, [itemId]: nextQty };
                                                                         });
                                                                     }}
                                                                     className={`text-base max-md:text-sm rounded p-1 transition-colors ${isUnavailable
@@ -392,13 +481,13 @@ const Cart = () => {
                                                             <div className="text-title text-center font-bold">${displayTotal.toFixed(2)}</div>
                                                             {currentQty > 1 && (
                                                                 <div className="text-xs text-secondary mt-1">
-                                                                    ${item.unitPrice.toFixed(2)} × {currentQty}
+                                                                    ${pricing.unitPrice.toFixed(2)} × {currentQty}
                                                                 </div>
                                                             )}
                                                         </div>
                                                         <div className="w-1/12 flex items-center justify-center">
                                                             <button
-                                                                onClick={() => removeItem(item._id)}
+                                                                onClick={() => removeItem(item.cartItemId)}
                                                                 className="p-2 hover:bg-red/10 rounded-full transition-colors group"
                                                                 title="Remove item"
                                                             >
@@ -420,129 +509,131 @@ const Cart = () => {
                                         <h3 className="text-title font-semibold">Apply Discount Code</h3>
                                     </div>
                                     <div className="input-block discount-code w-full h-12">
-                                        <form className='w-full h-full relative' onSubmit={(e) => e.preventDefault()}>
+                                        <form className='w-full h-full relative' onSubmit={handleApplyManualCoupon}>
                                             <input
                                                 type="text"
-                                                placeholder='Enter discount code (e.g., AN6810)'
+                                                value={manualCouponCode}
+                                                onChange={(e) => setManualCouponCode(e.target.value)}
+                                                placeholder='Enter discount code (e.g., NEWYEAR20)'
                                                 className='w-full h-full bg-surface pl-4 pr-32 rounded-lg border border-line focus:border-black focus:outline-none transition-colors'
+                                                disabled={validateCouponMutation.isPending}
                                             />
-                                            <button className='button-main absolute top-1 bottom-1 right-1 px-5 rounded-lg flex items-center justify-center hover:bg-black/90 transition-colors'>
-                                                Apply Code
+                                            <button
+                                                type="submit"
+                                                disabled={!manualCouponCode.trim() || validateCouponMutation.isPending}
+                                                className='button-main absolute top-1 bottom-1 right-1 px-5 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+                                            >
+                                                {validateCouponMutation.isPending ? 'Applying...' : 'Apply Code'}
                                             </button>
                                         </form>
                                     </div>
                                 </div>
 
-                                {/* Available Vouchers */}
-                                <div className="voucher-section mt-6">
-                                    <h3 className="text-title font-semibold mb-4">Available Vouchers</h3>
-                                    <div className="list-voucher grid md:grid-cols-3 gap-4">
-                                        <div className={`item ${applyCode === 200 ? 'bg-green border-green-600' : 'bg-surface'} border border-line rounded-xl p-4 transition-all hover:shadow-md ${applyCode === 200 ? 'ring-2 ring-green-500' : ''}`}>
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div>
-                                                    <div className="text-xs text-secondary mb-1">Discount</div>
-                                                    <div className="text-2xl font-bold text-red">10% OFF</div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-xs text-secondary">Min. Order</div>
-                                                    <div className="font-semibold">$200</div>
-                                                </div>
-                                            </div>
-                                            <div className="border-t border-dashed border-line pt-3 mb-3">
-                                                <div className="text-xs font-mono bg-black/5 px-2 py-1 rounded inline-block mb-2">
-                                                    CODE: AN6810
-                                                </div>
-                                                <div className="text-xs text-secondary">For orders from $200</div>
-                                            </div>
-                                            <button
-                                                className={`w-full py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${applyCode === 200
-                                                    ? 'bg-green-600 text-white'
-                                                    : totalCart >= 200
-                                                        ? 'bg-black text-white hover:bg-black/90'
-                                                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                                    }`}
-                                                onClick={() => handleApplyCode(200, Math.floor((totalCart / 100) * 10))}
-                                                disabled={totalCart < 200}
-                                            >
-                                                {applyCode === 200 ? (
-                                                    <span className="flex items-center justify-center gap-1">
-                                                        <Icon.CheckCircle size={16} /> Applied
-                                                    </span>
-                                                ) : totalCart >= 200 ? 'Apply Code' : 'Min $200 required'}
-                                            </button>
-                                        </div>
+                                {/* Available Coupons */}
+                                {cartCoupons.length > 0 && (
+                                    <div className="voucher-section mt-6">
+                                        <h3 className="text-title font-semibold mb-4">Available Coupons</h3>
 
-                                        <div className={`item ${applyCode === 300 ? 'bg-green border-green-600' : 'bg-surface'} border border-line rounded-xl p-4 transition-all hover:shadow-md ${applyCode === 300 ? 'ring-2 ring-green-500' : ''}`}>
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div>
-                                                    <div className="text-xs text-secondary mb-1">Discount</div>
-                                                    <div className="text-2xl font-bold text-red">15% OFF</div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-xs text-secondary">Min. Order</div>
-                                                    <div className="font-semibold">$300</div>
-                                                </div>
+                                        {/* Show error if coupon validation failed */}
+                                        {couponError && (
+                                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                                                {couponError}
                                             </div>
-                                            <div className="border-t border-dashed border-line pt-3 mb-3">
-                                                <div className="text-xs font-mono bg-black/5 px-2 py-1 rounded inline-block mb-2">
-                                                    CODE: AN6810
-                                                </div>
-                                                <div className="text-xs text-secondary">For orders from $300</div>
-                                            </div>
-                                            <button
-                                                className={`w-full py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${applyCode === 300
-                                                    ? 'bg-green-600 text-white'
-                                                    : totalCart >= 300
-                                                        ? 'bg-black text-white hover:bg-black/90'
-                                                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                                    }`}
-                                                onClick={() => handleApplyCode(300, Math.floor((totalCart / 100) * 15))}
-                                                disabled={totalCart < 300}
-                                            >
-                                                {applyCode === 300 ? (
-                                                    <span className="flex items-center justify-center gap-1">
-                                                        <Icon.CheckCircle size={16} /> Applied
-                                                    </span>
-                                                ) : totalCart >= 300 ? 'Apply Code' : 'Min $300 required'}
-                                            </button>
-                                        </div>
+                                        )}
 
-                                        <div className={`item ${applyCode === 400 ? 'bg-green border-green-600' : 'bg-surface'} border border-line rounded-xl p-4 transition-all hover:shadow-md ${applyCode === 400 ? 'ring-2 ring-green-500' : ''}`}>
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div>
-                                                    <div className="text-xs text-secondary mb-1">Discount</div>
-                                                    <div className="text-2xl font-bold text-red">20% OFF</div>
+                                        {/* Show applied coupon banner */}
+                                        {appliedCoupon && (
+                                            <div className="mb-4 p-4 bg-lime-50 border border-lime-200 rounded-lg flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Icon.CheckCircle className="text-lime-600" size={20} />
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-lime-800">Coupon Applied!</p>
+                                                        <p className="text-xs text-lime-600">
+                                                            {appliedCoupon.coupon} - Save ${discountCart.toFixed(2)}
+                                                        </p>
+                                                    </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-xs text-secondary">Min. Order</div>
-                                                    <div className="font-semibold">$400</div>
-                                                </div>
+                                                <button
+                                                    onClick={handleRemoveCoupon}
+                                                    className="text-red-600 hover:text-red-800 text-sm font-semibold"
+                                                >
+                                                    Remove
+                                                </button>
                                             </div>
-                                            <div className="border-t border-dashed border-line pt-3 mb-3">
-                                                <div className="text-xs font-mono bg-black/5 px-2 py-1 rounded inline-block mb-2">
-                                                    CODE: AN6810
+                                        )}
+
+                                        <div className="list-voucher grid md:grid-cols-3 gap-4">
+                                            {couponsLoading ? (
+                                                <div className="col-span-3 text-center py-8 text-secondary">
+                                                    Loading coupons...
                                                 </div>
-                                                <div className="text-xs text-secondary">For orders from $400</div>
-                                            </div>
-                                            <button
-                                                className={`w-full py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${applyCode === 400
-                                                    ? 'bg-green-600 text-white'
-                                                    : totalCart >= 400
-                                                        ? 'bg-black text-white hover:bg-black/90'
-                                                        : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                                                    }`}
-                                                onClick={() => handleApplyCode(400, Math.floor((totalCart / 100) * 20))}
-                                                disabled={totalCart < 400}
-                                            >
-                                                {applyCode === 400 ? (
-                                                    <span className="flex items-center justify-center gap-1">
-                                                        <Icon.CheckCircle size={16} /> Applied
-                                                    </span>
-                                                ) : totalCart >= 400 ? 'Apply Code' : 'Min $400 required'}
-                                            </button>
+                                            ) : (
+                                                cartCoupons.map((coupon) => {
+                                                    const isApplied = appliedCoupon?.coupon === coupon.coupon;
+                                                    const meetsMinOrder = totalCart >= coupon.minOrderValue;
+                                                    const discountText = coupon.discountType === 'percentage'
+                                                        ? `${coupon.discount}% OFF`
+                                                        : `$${coupon.discount} OFF`; return (
+                                                            <div
+                                                                key={coupon._id}
+                                                                className={`item ${isApplied ? 'bg-lime-50 border-lime-600' : 'bg-surface'
+                                                                    } border border-line rounded-xl p-4 transition-all hover:shadow-md ${isApplied ? 'ring-2 ring-lime-500' : ''
+                                                                    }`}
+                                                            >
+                                                                <div className="flex items-start justify-between mb-3">
+                                                                    <div>
+                                                                        <div className="text-xs text-secondary mb-1">Discount</div>
+                                                                        <div className="text-2xl font-bold text-red">{discountText}</div>
+                                                                    </div>
+                                                                    {coupon.minOrderValue > 0 && (
+                                                                        <div className="text-right">
+                                                                            <div className="text-xs text-secondary">Min. Order</div>
+                                                                            <div className="font-semibold">${coupon.minOrderValue}</div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="border-t border-dashed border-line pt-3 mb-3">
+                                                                    <div className="text-xs font-mono bg-black/5 px-2 py-1 rounded inline-block mb-2">
+                                                                        CODE: {coupon.coupon}
+                                                                    </div>
+                                                                    <div className="text-xs text-secondary">
+                                                                        {coupon.minOrderValue > 0 ? `For orders from $${coupon.minOrderValue}` : 'No minimum order'}
+                                                                    </div>
+                                                                    {coupon.endDate && (
+                                                                        <div className="text-xs text-secondary mt-1">
+                                                                            Valid until {new Date(coupon.endDate).toLocaleDateString()}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <button
+                                                                    className={`w-full py-2 px-3 rounded-lg text-sm font-semibold transition-colors ${isApplied
+                                                                        ? 'bg-lime-600 text-white'
+                                                                        : meetsMinOrder
+                                                                            ? 'bg-black text-white hover:bg-black/90'
+                                                                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                                                        }`}
+                                                                    onClick={() => !isApplied && meetsMinOrder && handleApplyCoupon(coupon)}
+                                                                    disabled={!meetsMinOrder || validateCouponMutation.isPending || isApplied}
+                                                                >
+                                                                    {isApplied ? (
+                                                                        <span className="flex items-center justify-center gap-1">
+                                                                            <Icon.CheckCircle size={16} /> Applied
+                                                                        </span>
+                                                                    ) : validateCouponMutation.isPending ? (
+                                                                        'Validating...'
+                                                                    ) : meetsMinOrder ? (
+                                                                        'Apply Coupon'
+                                                                    ) : (
+                                                                        `Min $${coupon.minOrderValue} required`
+                                                                    )}
+                                                                </button>
+                                                            </div>
+                                                        );
+                                                })
+                                            )}
                                         </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
                             {/* Order Summary Sidebar */}
                             <div className="xl:w-1/3 xl:pl-12 w-full">
@@ -560,7 +651,7 @@ const Cart = () => {
                                         </div>
 
                                         {discountCart > 0 && (
-                                            <div className="discount-block flex justify-between items-center text-green-600">
+                                            <div className="discount-block flex justify-between items-center text-lime-500">
                                                 <div className="flex items-center gap-1">
                                                     <Icon.Tag size={16} />
                                                     <span>Discount Applied</span>
@@ -577,13 +668,13 @@ const Cart = () => {
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
-                                                <label className={`flex items-center justify-between p-2.5 md:p-3 rounded-lg border cursor-pointer transition-all ${shipCart === 0 ? 'border-black bg-black text-white' : 'border-line hover:border-gray-400'}`}>
+                                                <label className={`flex items-center justify-between p-2.5 md:p-3 rounded-lg border cursor-pointer transition-all ${shippingMethod === 'pickup' ? 'border-black bg-black text-white' : 'border-line hover:border-gray-400'}`}>
                                                     <div className="flex items-center gap-2">
                                                         <input
                                                             type="radio"
                                                             name="ship"
-                                                            checked={shipCart === 0}
-                                                            onChange={() => setShipCart(0)}
+                                                            checked={shippingMethod === 'pickup'}
+                                                            onChange={() => setShippingMethod('pickup')}
                                                             className="w-4 h-4"
                                                         />
                                                         <div>
@@ -594,13 +685,13 @@ const Cart = () => {
                                                     <div className="font-semibold">$0.00</div>
                                                 </label>
 
-                                                <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${shipCart === 30 ? 'border-black bg-black text-white' : 'border-line hover:border-gray-400'}`}>
+                                                <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${shippingMethod === 'normal' ? 'border-black bg-black text-white' : 'border-line hover:border-gray-400'}`}>
                                                     <div className="flex items-center gap-2">
                                                         <input
                                                             type="radio"
                                                             name="ship"
-                                                            checked={shipCart === 30}
-                                                            onChange={() => setShipCart(30)}
+                                                            checked={shippingMethod === 'normal'}
+                                                            onChange={() => setShippingMethod('normal')}
                                                             className="w-4 h-4"
                                                         />
                                                         <div>
@@ -611,13 +702,13 @@ const Cart = () => {
                                                     <div className="font-semibold text-secondary text-sm">TBD</div>
                                                 </label>
 
-                                                <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${shipCart === 40 ? 'border-black bg-black text-white' : 'border-line hover:border-gray-400'}`}>
+                                                <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${shippingMethod === 'express' ? 'border-black bg-black text-white' : 'border-line hover:border-gray-400'}`}>
                                                     <div className="flex items-center gap-2">
                                                         <input
                                                             type="radio"
                                                             name="ship"
-                                                            checked={shipCart === 40}
-                                                            onChange={() => setShipCart(40)}
+                                                            checked={shippingMethod === 'express'}
+                                                            onChange={() => setShippingMethod('express')}
                                                             className="w-4 h-4"
                                                         />
                                                         <div>
@@ -628,28 +719,32 @@ const Cart = () => {
                                                     <div className="font-semibold text-secondary text-sm">TBD</div>
                                                 </label>
                                             </div>
+
                                         </div>
 
-                                        {/* Total Savings */}
-                                        {discountCart > 0 && (
-                                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-1 text-green-700">
-                                                        <Icon.Sparkle size={16} />
-                                                        <span className="text-sm font-medium">Total Savings</span>
-                                                    </div>
-                                                    <div className="text-green-700 font-bold">
-                                                        ${discountCart.toFixed(2)}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}                                        {/* Grand Total */}
+
+                                        {/* Grand Total */}
                                         <div className="border-t border-line pt-4">
                                             <div className="flex justify-between items-center">
                                                 <div className="heading5">Total</div>
-                                                <div className="heading4 text-red">${(totalCart - discountCart + shipCart).toFixed(2)}</div>
+                                                <div className="heading4 text-red">${(totalCart - discountCart).toFixed(2)}</div>
                                             </div>
+                                            {(shippingMethod === 'normal' || shippingMethod === 'express') && (
+                                                <div className="text-xs text-secondary mt-2">
+                                                    + Shipping (calculated at checkout)
+                                                </div>
+                                            )}
                                         </div>
+                                        {/* {(shippingMethod === 'normal' || shippingMethod === 'express') && (
+                                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                <div className="flex items-start gap-2">
+                                                    <Icon.Info size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                                                    <div className="text-xs text-blue-700">
+                                                        <span className="font-semibold">Shipping cost</span> will be calculated at checkout based on your delivery address and package weight.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )} */}
                                     </div>
 
                                     {/* Checkout Button */}

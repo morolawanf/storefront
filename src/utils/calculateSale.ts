@@ -33,6 +33,12 @@ export function calculateBestSale(
   };
 
   if (!sale || !sale.isActive || !sale.variants?.length) return result;
+  const now = new Date();
+  const saleStart = sale.startDate ? new Date(sale.startDate) : null;
+  const saleEnd = sale.endDate ? new Date(sale.endDate) : null;
+
+  const isWithinDateRange = !saleStart || !saleEnd || (now >= saleStart && now <= saleEnd);
+  if (!isWithinDateRange) return result;
 
   const isAll = (v: unknown) =>
     v === null || (typeof v === 'string' && v.trim().toLowerCase() === 'all');
@@ -260,6 +266,12 @@ export function shouldShowSaleMarquee(sale: ProductSale | null | undefined): boo
   if (!sale || !sale.isActive || !sale.isHot) {
     return false;
   }
+  const now = new Date();
+  const saleStart = sale.startDate ? new Date(sale.startDate) : null;
+  const saleEnd = sale.endDate ? new Date(sale.endDate) : null;
+
+  const isWithinDateRange = !saleStart || !saleEnd || (now >= saleStart && now <= saleEnd);
+  if (!isWithinDateRange) return false;
 
   // Check if sale has ended
   if (sale.type === 'Flash' && sale.endDate && new Date(sale.endDate) < new Date()) {

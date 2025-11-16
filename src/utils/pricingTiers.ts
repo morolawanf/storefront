@@ -73,7 +73,7 @@ export function getTierDescription(tier: ProductPricingTier | AppliedPricingTier
     case 'fixedPrice':
       return `Fixed price $${tier.value.toFixed(2)}`;
     case 'percentOff':
-      return `${tier.value}% off`;
+      return `${tier.value}%`;
     case 'amountOff':
       return `$${tier.value.toFixed(2)} off`;
     default:

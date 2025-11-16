@@ -1,14 +1,13 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react'
-import Product from '../Product/Product'
-import { ProductType } from '@/type/ProductType'
+import React, { useState } from 'react';
+import Product from '../Product/Product';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Navigation } from 'swiper/modules';
 import 'swiper/css/bundle';
 
 interface Props {
-    data: Array<ProductType>;
+    data: Array<any>;
     start: number;
     limit: number;
 }
@@ -60,7 +59,7 @@ const BestSellers: React.FC<Props> = ({ data, start, limit }) => {
                 </div>
             </div>
         </>
-    )
-}
+    );
+};
 
-export default BestSellers
+export default BestSellers;
