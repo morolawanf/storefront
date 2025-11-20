@@ -411,12 +411,16 @@ const ModalQuickview = () => {
                                                     className='cursor-pointer body1'
                                                 />
                                             </div>
-                                            <div
-                                                onClick={handleAddToCart}
-                                                className={`button-main w-full text-center bg-white text-black border border-black cursor-pointer`}
-                                            >
-                                                Add To Cart
-                                            </div>
+                                            {product.stock > 0 ? (
+                                                <div
+                                                    onClick={handleAddToCart}
+                                                    className={`button-main w-full text-center bg-white text-black border border-black cursor-pointer`}
+                                                >
+                                                    Add To Cart
+                                                </div>
+                                            ) : (
+                                                <div className="button-main w-full text-center bg-surface text-secondary2 border border-line hover:bg-surface hover:text-secondary">Out Of Stock</div>
+                                            )}
                                         </div>
                                         <div className="button-block mt-5">
                                             <div className="button-main w-full text-center">Buy It Now</div>

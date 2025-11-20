@@ -136,7 +136,7 @@ export default function SearchResultClient({ searchQuery }: SearchResultClientPr
         sortBy,
         sortOrder,
         page: parseInt(page, 10),
-        limit: 12,
+        limit: 15,
     });
 
     // Fetch available filters

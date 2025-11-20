@@ -70,7 +70,6 @@ export default async function CampaignPage({
     return (
         <HydrationBoundary state={dehydrate(queryClient)}>
             <CampaignClient slug={slug} searchParams={serverSearchParams} />
-            <Footer />
         </HydrationBoundary>
     );
 }

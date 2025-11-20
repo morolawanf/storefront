@@ -33,6 +33,8 @@ import { CheckCircleIcon } from '@phosphor-icons/react';
 import { useSession } from 'next-auth/react';
 import { formatToNaira } from '@/utils/currencyFormatter';
 import { LazyLoadImage as Image } from 'react-lazy-load-image-component';
+import Countdown from './Countdown'; // Import Countdown component
+
 // Cart context already imported correctly at top
 
 interface ProductProps {
@@ -352,6 +354,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
         return calculateBestSale(data.sale, data.price);
     }, [data.sale, data.price]);
 
+
     // Calculate sold quantity from sale variants (cumulative boughtCount)
     const soldQuantity = useMemo(() => {
         return calculateSoldFromSale(data.sale);
@@ -383,6 +386,15 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
         const isNew = daysSinceCreation <= 5;
         return isNew;
     }, [saleInfo.hasActiveSale, data.createdAt]);
+
+    // Check if should show flash sale countdown
+    const showFlashSaleCountdown = useMemo(() => {
+        if (!data.sale || data.sale.type !== 'Flash' || !data.sale.startDate || !data.sale.endDate) return false;
+        const now = new Date();
+        const start = new Date(data.sale.startDate);
+        const end = new Date(data.sale.endDate);
+        return now >= start && now <= end;
+    }, [data.sale]);
 
 
     return (
@@ -441,7 +453,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                     placeholderSrc={`${getProductImageCdnUrl(rawData)}?class=minify`}
                                     src={getProductImageCdnUrl(rawData)}
                                     alt={data.name}
-                                    className='w-full h-full object-cover'
+                                    className='w-full h-full object-cover duration-700'
                                     wrapperClassName='w-full h-full object-cover duration-700'
                                 />
                                 {/* {activeColor ? (
@@ -494,7 +506,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                     Quick View
                                 </div>
                                 {!hasNonColorAttributes ? (
-                                    <div
+                                    data.stock >= 0 ? (<div
                                         className="add-cart-btn w-full text-button-uppercase py-2 px-0.5 text-center rounded-full duration-500 bg-white hover:bg-black hover:text-white cursor-pointer"
                                         onClick={e => {
                                             e.stopPropagation();
@@ -502,7 +514,10 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                         }}
                                     >
                                         Add To Cart
-                                    </div>
+                                    </div>) : (
+                                        <div className="add-cart-btn w-full text-button-uppercase py-2 px-0.5 text-center rounded-full duration-500 bg-surface text-secondary2 border border-line hover:bg-surface hover:text-secondary">Out Of Stock</div>
+
+                                    )
                                 ) : (
                                     <>
                                         <div
@@ -533,15 +548,19 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                                     ))}
                                                 </div>
                                             )}
-                                            <div
-                                                className="button-main w-full text-center rounded-full py-3 mt-4 cursor-pointer"
-                                                onClick={() => {
-                                                    handleAddToCart();
-                                                    setOpenQuickShop(false);
-                                                }}
-                                            >
-                                                Add To cart
-                                            </div>
+                                            {data.stock > 0 ? (
+                                                <div
+                                                    className="button-main w-full text-center rounded-full py-3 mt-4 cursor-pointer"
+                                                    onClick={() => {
+                                                        handleAddToCart();
+                                                        setOpenQuickShop(false);
+                                                    }}
+                                                >
+                                                    Add To cart
+                                                </div>) : (
+                                                <div className="button-main w-full text-center rounded-full py-3 mt-4 bg-surface text-secondary2 border border-line hover:bg-surface hover:text-secondary">Out Of Stock</div>
+
+                                            )}
                                         </div>
                                     </>
                                 )}
@@ -569,26 +588,31 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                         </div>
                         <div className="product-infor mt-4 lg:mb-7">
                             {showSaleProgress && (
-                                <div className="product-sold sm:pb-4 pb-2">
-                                    <div className="progress bg-line h-1.5 w-full rounded-full overflow-hidden relative">
+                                <div className="product-sold pb-2">
+                                    <div className="progress bg-line h-[5px] w-full rounded-full overflow-hidden relative">
                                         <div
                                             className={`progress-sold bg-red absolute left-0 top-0 h-full`}
                                             style={{ width: `${percentSold}%` }}
                                         >
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-between gap-3 gap-y-1 flex-wrap mt-2">
+                                    <div className="flex items-center justify-between gap-3 gap-y-1 flex-wrap mt-1">
                                         <div className="text-button-uppercase">
-                                            <span className='text-secondary2 max-sm:text-xs'>Sold: </span>
-                                            <span className='max-sm:text-xs'>{soldQuantity}</span>
+                                            <span className='text-secondary2 text-base font-medium'>Sold: </span>
+                                            <span className='text-base'>{soldQuantity}</span>
                                         </div>
                                         <div className="text-button-uppercase">
-                                            <span className='text-secondary2 max-sm:text-xs'>Available: </span>
-                                            <span className='max-sm:text-xs'>{availableStock}</span>
+                                            <span className='text-secondary2 text-base font-medium'>Available: </span>
+                                            <span className='text-base'>{availableStock}</span>
                                         </div>
                                     </div>
                                 </div>
                             )}
+
+                            {showFlashSaleCountdown && data.sale?.endDate && (
+                                <Countdown endDate={data.sale.endDate} />
+                            )}
+
                             <div className='w-full relative '>
                                 <Link href={`/product/${data.slug}`} className="product-name text-title duration-300 hover-underline-animation cursor-pointer">{data.name}</Link>
                                 {colors.length > 0 && (
@@ -615,7 +639,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                             </div>
 
 
-                            <div className="product-price-block flex items-center gap-2 flex-wrap mt-1 duration-300 relative z-[1]">
+                            <div className="product-price-block flex items-center gap-2 flex-wrap mt-0.5 duration-300 relative z-[1]">
                                 {saleInfo.hasActiveSale ? (
                                     <>
                                         <div className="product-price text-title">{formatToNaira(saleInfo.discountedPrice)}</div>

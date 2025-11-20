@@ -265,7 +265,7 @@ export const useAddToWishlist = () => {
 
 ```typescript
 // In useWishlist.ts
-export const useWishlistItems = (page = 1, limit = 12) => {
+export const useWishlistItems = (page = 1, limit = 15) => {
     const syncFromServer = useWishlistStore(state => state.syncFromServer);
 
     const query = useQuery({

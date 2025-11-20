@@ -37,8 +37,10 @@ export function calculateBestSale(
   const saleStart = sale.startDate ? new Date(sale.startDate) : null;
   const saleEnd = sale.endDate ? new Date(sale.endDate) : null;
 
-  const isWithinDateRange = !saleStart || !saleEnd || (now >= saleStart && now <= saleEnd);
-  if (!isWithinDateRange) return result;
+  if (sale.type === 'Flash'){
+    const isWithinDateRange = !saleStart || !saleEnd || (now >= saleStart && now <= saleEnd);
+    if(!isWithinDateRange) return result;
+  } 
 
   const isAll = (v: unknown) =>
     v === null || (typeof v === 'string' && v.trim().toLowerCase() === 'all');
@@ -294,8 +296,20 @@ export function shouldShowSaleMarquee(sale: ProductSale | null | undefined): boo
  * @returns true if should show progress, false otherwise
  */
 export function shouldShowSaleProgress(sale: ProductSale | null | undefined): boolean {
-  // Same logic as marquee - isHot controls both
-  return shouldShowSaleMarquee(sale);
+    if (!sale || !sale.isActive) {
+    return false;
+  }
+  // Check if sale has ended
+  if (sale.type !== 'Limited') {
+    return false;
+  }
+
+  // Don't show if sold out
+  if (isSaleSoldOut(sale)) {
+    return false;
+  }
+
+  return true;
 }
 
 /**

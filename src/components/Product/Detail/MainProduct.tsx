@@ -91,24 +91,28 @@ const Sale: React.FC<Props> = ({ slug }) => {
         setWishlistPending(true);
 
         // if product existed in wishlist, remove from wishlist
-        if (isInWishlist && wishlistItemId) {
+        if (isInWishlist) {
             // Optimistically remove from Zustand
             removeFromWishlistStore(productMain._id);
 
-            // Send to server
-            removeFromWishlistMutation(wishlistItemId, {
-                onSuccess: () => {
-                    setWishlistPending(false);
-                },
-                onError: () => {
-                    // Rollback on error - re-add to Zustand
-                    if (wishlistItem) {
-                        addToWishlistStore(productMain._id, wishlistItem.product);
-                    }
-                    setWishlistPending(false);
-                },
-            });
-        } else if (productMain) {
+            if (wishlistItemId) {
+                // Send to server
+                removeFromWishlistMutation(wishlistItemId, {
+                    onSuccess: () => {
+                        setWishlistPending(false);
+                    },
+                    onError: () => {
+                        // Rollback on error - re-add to Zustand
+                        if (wishlistItem) {
+                            addToWishlistStore(productMain._id, wishlistItem.product);
+                        }
+                        setWishlistPending(false);
+                    },
+                });
+            } else {
+                setWishlistPending(false);
+            }
+        } else {
             // Build product data for optimistic update
             const productImages = productMain.description_images || [];
 
@@ -167,8 +171,8 @@ const Sale: React.FC<Props> = ({ slug }) => {
                     },
                 }
             );
+            openModalWishlist();
         }
-        openModalWishlist();
     }, [wishlistPending, productMain, isInWishlist, wishlistItemId, wishlistItem, addToWishlistStore, removeFromWishlistStore, addToWishlistMutation, removeFromWishlistMutation, openModalWishlist]);
 
     useEffect(() => {
@@ -443,6 +447,14 @@ const Sale: React.FC<Props> = ({ slug }) => {
         setActiveTab(tab);
     };
 
+    const limitedSaleStats = useMemo(() => {
+        if (normalizedSale?.type !== 'Limited') return { sold: 0, total: 0 };
+
+        const sold = normalizedSale.variants.reduce((acc, variant) => acc + (variant.boughtCount || 0), 0);
+        const total = normalizedSale.variants.reduce((acc, variant) => acc + (variant.maxBuys || 0), 0);
+
+        return { sold, total };
+    }, [normalizedSale]);
 
 
     return (
@@ -541,7 +553,7 @@ const Sale: React.FC<Props> = ({ slug }) => {
                                 </Swiper>
                             </div>
                         </div>
-                        <div className="product-infor md:w-1/2 w-full lg:pl-[15px] md:pl-2">
+                        <div className={`product-infor ${product.stock === 0 ? 'style-out-of-stock' : ''} md:w-1/2 w-full lg:pl-[15px] md:pl-2`}>
                             <div className="flex justify-between">
                                 <div>
                                     <div className="caption2 text-secondary font-semibold uppercase">{product.type}</div>
@@ -579,7 +591,11 @@ const Sale: React.FC<Props> = ({ slug }) => {
                             </div>
                             <div className="list-action mt-6 gap-4 flex-col">
                                 <SalesCountdownTimer sale={normalizedSale} salesType={productMain.sale?.type} />
-                                <LimitedProductProgress sold={product.sold ?? 0} totalQuantity={product.quantity ?? 0} salesType={productMain.sale?.type} />
+                                <LimitedProductProgress
+                                    sold={normalizedSale?.type === 'Limited' ? limitedSaleStats.sold : (product.sold ?? 0)}
+                                    totalQuantity={normalizedSale?.type === 'Limited' ? limitedSaleStats.total : (product.quantity ?? 0)}
+                                    salesType={productMain.sale?.type}
+                                />
 
                                 {/* Color Attribute - Rendered with Color package */}
                                 {colors.length > 0 && (
@@ -617,7 +633,7 @@ const Sale: React.FC<Props> = ({ slug }) => {
                                         <div className="list-options flex items-center gap-2 flex-wrap mt-3">
                                             {attr.children.map((option, optIndex) => (
                                                 <div
-                                                    className={`option-item px-4 py-2 flex items-center justify-center text-button rounded-lg bg-white border border-line cursor-pointer duration-300 hover:bg-black hover:text-white ${selectedAttributes[attr.name] === option.name ? 'active bg-black text-white' : ''
+                                                    className={`option-item px-4 py-2 flex items-center justify-center text-button rounded-lg border border-line cursor-pointer duration-300 hover:bg-neutral-700 hover:text-white ${selectedAttributes[attr.name] === option.name ? 'active bg-black text-white' : 'bg-white'
                                                         }`}
                                                     key={optIndex}
                                                     onClick={() => handleAttributeChange(attr.name, option.name)}
@@ -681,7 +697,11 @@ const Sale: React.FC<Props> = ({ slug }) => {
                                             className='cursor-pointer'
                                         />
                                     </div>
-                                    <div onClick={handleAddToCart} className="button-main w-full text-center bg-white text-black border border-black">Add To Cart</div>
+                                    {product.stock > 0 ? (
+                                        <div onClick={handleAddToCart} className="button-main w-full text-center bg-white text-black border border-black">Add To Cart</div>
+                                    ) : (
+                                        <div className="button-main w-full text-center bg-surface text-secondary2 border border-line hover:bg-surface hover:text-secondary">Out Of Stock</div>
+                                    )}
                                 </div>
 
 

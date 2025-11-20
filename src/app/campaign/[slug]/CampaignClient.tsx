@@ -130,7 +130,7 @@ export default function CampaignClient({ slug, searchParams: initialParams = {} 
         attributes: colorsParam.length > 0 ? { Color: colorsParam } : undefined,
         sort: sortParam,
         page: parseInt(page, 10),
-        limit: 12,
+        limit: 15,
     });
 
     const products = campaignData?.data?.products;

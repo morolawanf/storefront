@@ -51,7 +51,7 @@ export const useCampaignBySlug = (params: CampaignProductsParams) => {
 
       return {
         data: response.data,
-        meta: response.meta || { page: 1, limit: 12, total: 0, pages: 0 },
+        meta: response.meta || { page: 1, limit: 15, total: 0, pages: 0 },
       };
     },
     refetchOnMount: false,

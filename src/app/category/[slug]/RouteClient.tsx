@@ -108,7 +108,7 @@ export default function RouteClient({ slug, searchParams: initialParams = {} }: 
         attributes: colorsParam.length > 0 ? { Color: colorsParam } : undefined,
         sort: sortParam ? [sortParam] : undefined,
         page: parseInt(page, 10),
-        limit: 12,
+        limit: 15,
     });
 
     const { data: filters, isLoading: filtersLoading } = useCategoryFilters(slug);

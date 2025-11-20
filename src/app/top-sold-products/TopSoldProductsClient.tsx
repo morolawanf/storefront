@@ -115,7 +115,7 @@ export default function TopSoldProductsClient() {
         attributes: colorsParam.length > 0 ? { Color: colorsParam } : undefined,
         sort: [sortParam],
         page: parseInt(page, 10),
-        limit: 12,
+        limit: 15,
     });
 
     const products = productsData?.data;

@@ -17,7 +17,7 @@ const WishlistClient = () => {
     const [sortOption, setSortOption] = useState('');
     const [layoutCol, setLayoutCol] = useState<number | null>(4);
     const [currentPage, setCurrentPage] = useState(1); // 1-indexed for API
-    const productsPerPage = 12;
+    const productsPerPage = 15;
 
     // Fetch wishlist items with React Query
     const { data: wishlistData, isLoading, error } = useWishlistItems(currentPage, productsPerPage);
