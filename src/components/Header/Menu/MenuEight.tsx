@@ -19,6 +19,7 @@ import { useSearchHistory } from '@/hooks/useSearchHistory';
 import { useProductSearchAutocomplete } from '@/hooks/queries/useProducts';
 import AutocompleteDropdown from '@/components/Search/AutocompleteDropdown';
 import UserIcon from './Usericon';
+import { WhatsappLogoIcon } from '@phosphor-icons/react';
 
 // Data constants
 
@@ -236,9 +237,9 @@ const MenuEight = () => {
                                         </ul>
                                     </div>
                                 </div>
-                                <div className="right flex items-center gap-1">
-                                    <div className="caption1">Hotline:</div>
-                                    <div className="text-button-uppercase">+01 1234 8888</div>
+                                <div className="right flex items-center gap-1 cursor-pointer">
+                                    <WhatsappLogoIcon weight='fill' className='text-green-500 w-7 h-7' />
+                                    <div className="text-button-uppercase text-green-700">+01 1234 8888</div>
                                 </div>
                             </div>
                         </div>
