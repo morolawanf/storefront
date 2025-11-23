@@ -213,6 +213,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
         if (activeSize) {
             attributes.push({ name: 'Size', value: activeSize });
         }
+console.log(data);
 
         // Add full product to cart with quantity and selected attributes
         addToCart(data, qty, attributes);

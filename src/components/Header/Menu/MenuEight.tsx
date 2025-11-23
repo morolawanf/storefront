@@ -239,7 +239,7 @@ const MenuEight = () => {
                                 </div>
                                 <div className="right flex items-center gap-1 cursor-pointer">
                                     <WhatsappLogoIcon weight='fill' className='text-green-500 w-7 h-7' />
-                                    <div className="text-button-uppercase text-green-700">+01 1234 8888</div>
+                                    <div className="text-button-uppercase text-green-700">+234 802 829 9167</div>
                                 </div>
                             </div>
                         </div>

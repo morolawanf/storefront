@@ -52,13 +52,15 @@ export function calculateCartItemPricing(item: CartItem): CartItemPricing {
 
   // Check for active sale
   if (item.sale && item.sale.isActive) {
-    const now = new Date();
-    const saleStart = item.sale.startDate ? new Date(item.sale.startDate) : null;
-    const saleEnd = item.sale.endDate ? new Date(item.sale.endDate) : null;
+    if (item.sale.type === 'Flash') {
+      const now = new Date();
+      const saleStart = item.sale.startDate ? new Date(item.sale.startDate) : null;
+      const saleEnd = item.sale.endDate ? new Date(item.sale.endDate) : null;
 
-    const isWithinDateRange = !saleStart || !saleEnd || (now >= saleStart && now <= saleEnd);
-
-    if (isWithinDateRange && item.sale.variants && item.sale.variants.length > 0) {
+      const isWithinDateRange = !saleStart || !saleEnd || (now >= saleStart && now <= saleEnd);
+      if (!isWithinDateRange) return;
+    }
+    if (item.sale.variants && item.sale.variants.length > 0) {
       sale = item.sale;
       let matchingVariant = null;
 

@@ -37,10 +37,10 @@ export function calculateBestSale(
   const saleStart = sale.startDate ? new Date(sale.startDate) : null;
   const saleEnd = sale.endDate ? new Date(sale.endDate) : null;
 
-  if (sale.type === 'Flash'){
+  if (sale.type === 'Flash') {
     const isWithinDateRange = !saleStart || !saleEnd || (now >= saleStart && now <= saleEnd);
-    if(!isWithinDateRange) return result;
-  } 
+    if (!isWithinDateRange) return result;
+  }
 
   const isAll = (v: unknown) =>
     v === null || (typeof v === 'string' && v.trim().toLowerCase() === 'all');
@@ -84,8 +84,7 @@ export function calculateBestSale(
     const off = Math.max(0, v.amountOff || 0);
 
     // Pick the stronger discount outcome (in price terms)
-    const priceFromPct =
-      pct > 0 ? originalPrice - Math.round((originalPrice * pct) / 100) : originalPrice;
+    const priceFromPct = pct > 0 ? originalPrice - (originalPrice * pct) / 100 : originalPrice;
     const priceFromOff = off > 0 ? Math.max(0, originalPrice - off) : originalPrice;
 
     // Decide which discount this variant actually gives
@@ -296,7 +295,7 @@ export function shouldShowSaleMarquee(sale: ProductSale | null | undefined): boo
  * @returns true if should show progress, false otherwise
  */
 export function shouldShowSaleProgress(sale: ProductSale | null | undefined): boolean {
-    if (!sale || !sale.isActive) {
+  if (!sale || !sale.isActive) {
     return false;
   }
   // Check if sale has ended

@@ -15,6 +15,7 @@ import { getCdnUrl } from '@/libs/cdn-url';
 import { TrashIcon } from '@phosphor-icons/react';
 
 const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType; }) => {
+   /*
     const [timeLeft, setTimeLeft] = useState(serverTimeLeft);
 
     useEffect(() => {
@@ -36,6 +37,7 @@ const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType; }) =
 
         return () => clearInterval(timer);
     }, []);
+    */
 
     const [activeTab, setActiveTab] = useState<string | undefined>('');
     const { isModalOpen, closeModalCart } = useModalCartContext();

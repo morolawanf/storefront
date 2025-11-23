@@ -21,7 +21,7 @@ export default function Home() {
       <HomeClient />
       {/* <Testimonial data={testimonialData} limit={5} /> */}
       <Benefit props="md:py-20 py-10" />
-      <ModalNewsletter />
+      {/* <ModalNewsletter /> */}
     </>
   );
 }
