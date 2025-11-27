@@ -2,7 +2,7 @@
 import React from 'react'
 import { useSearchParams } from 'next/navigation';
 import TopNavOne from '@/components/Header/TopNav/TopNavOne'
-import MenuOne from '@/components/Header/Menu/MenuOne'
+import MenuEight from '@/components/Header/Menu/MenuEight'
 import BreadcrumbProduct from '@/components/Breadcrumb/BreadcrumbProduct'
 import OutOfStock from '@/components/Product/Detail/OutOfStock';
 import Footer from '@/components/Footer/Footer'
@@ -20,7 +20,7 @@ const ProductOutOfStock = () => {
         <>
             <TopNavOne props="style-one bg-black" slogan="New customers save 10% with the code GET10" />
             <div id="header" className='relative w-full'>
-                <MenuOne props="bg-white" />
+                <MenuEight props="bg-white" />
                 <BreadcrumbProduct data={productData} productPage='out-of-stock' productId={productId} />
             </div>
             <OutOfStock data={productData} productId={productId} />

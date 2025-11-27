@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ApiResponse, ApiResponseWithMeta } from '@/libs/api/axios';
+import { signOut } from '@@/auth';
 
 /**
  * Server-side API client for prefetching data
@@ -32,6 +33,22 @@ serverApiClient.interceptors.response.use(
         status: error.response?.status,
         message: error.message,
       });
+
+      if (error.response?.status === 401) {
+            const respData = error.response.data as Record<string, unknown> | undefined;
+            if (
+              respData &&
+              typeof respData.message === 'string' &&
+              respData.message === 'Invalid token'
+            ) {
+              console.error('[Unauthenticaed]');
+              // signOut();
+              if (typeof window === 'undefined') {
+              signOut({ redirectTo: `/` });
+            }
+
+            }
+          }
     }
     return Promise.reject(error);
   }

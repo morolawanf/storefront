@@ -165,6 +165,11 @@ export const api = {
     byCode: (code: string) => `/coupons/${encodeURIComponent(code)}`,
     validate: '/coupons/validate',
   },
+
+  // Settings endpoints
+  settings: {
+    get: '/settings',
+  },
 } as const;
 
 export default api;

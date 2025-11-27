@@ -28,7 +28,7 @@ export const useUserProfile = ({ userId }: { userId?: string }) => {
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: false, // Don't retry on failure to prevent infinite loading
+    retry: 3,
     refetchOnWindowFocus: false,
     enabled: !!userId,
   });

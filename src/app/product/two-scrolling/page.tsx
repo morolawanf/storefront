@@ -2,7 +2,7 @@
 import React from 'react';
 import { useSearchParams } from 'next/navigation';
 import TopNavOne from '@/components/Header/TopNav/TopNavOne';
-import MenuOne from '@/components/Header/Menu/MenuOne';
+import MenuEight from '@/components/Header/Menu/MenuEight';
 import BreadcrumbProduct from '@/components/Breadcrumb/BreadcrumbProduct';
 import CountdownTimer from '@/components/Product/Detail/CountdownTimer';
 import Footer from '@/components/Footer/Footer';

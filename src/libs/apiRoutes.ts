@@ -18,6 +18,9 @@ const ROUTES = {
   // File upload endpoints
   uploadSingleFile: '/files/upload/single',
   uploadMultipleFiles: '/files/upload/multiple',
+
+  // Settings endpoints
+  storeSettings: '/settings',
 } as const;
 
 type RoutesMap = typeof ROUTES;

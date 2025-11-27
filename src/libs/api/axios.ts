@@ -82,6 +82,14 @@ baseApiClient.interceptors.response.use(
       ) {
         console.error('[Unauthenticaed]');
         // signOut();
+        if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      
+      // Avoid infinite loops on auth pages
+      if (currentPath !== '/login' && currentPath !== '/register') {
+        signOut({ callbackUrl: `/login?callbackUrl=${encodeURIComponent(currentPath)}` });
+      }
+    }
       }
     }
     if (process.env.NODE_ENV === 'development') {

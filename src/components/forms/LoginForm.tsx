@@ -16,6 +16,7 @@ interface LoginFormProps {
 
 export default function LoginForm({ onLoginSuccess, redirectPath }: LoginFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const form = useForm({
@@ -29,6 +30,7 @@ export default function LoginForm({ onLoginSuccess, redirectPath }: LoginFormPro
     },
     onSubmit: async ({ value }) => {
       setSubmitError(null);
+      setIsLoading(true);
       try {
         const result = await credentialsLogin(
           value.email,
@@ -36,7 +38,6 @@ export default function LoginForm({ onLoginSuccess, redirectPath }: LoginFormPro
           value.rememberMe
         );
 
-        console.log(result);
         if (result.success) {
           const nextRoute = redirectPath && result.emailVerified ? redirectPath : "/";
 
@@ -57,6 +58,7 @@ export default function LoginForm({ onLoginSuccess, redirectPath }: LoginFormPro
       } catch (error) {
         console.error("Login error:", error);
         setSubmitError("Invalid credentials. Please try again.");
+        setIsLoading(false);
       }
     },
   });
@@ -156,13 +158,13 @@ export default function LoginForm({ onLoginSuccess, redirectPath }: LoginFormPro
       {/* Submit Button */}
       <div className="block-button md:mt-7 mt-4">
         <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-          {([canSubmit, isSubmitting]) => (
+          {([canSubmit, isSubmitting, isLoading]) => (
             <button
               type="submit"
               disabled={!canSubmit || isSubmitting}
               className="button-main w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Logging in..." : "Login"}
+              {isLoading ? "Logging in..." : "Login"}
             </button>
           )}
         </form.Subscribe>

@@ -2,7 +2,7 @@
 import React from 'react'
 import { useSearchParams } from 'next/navigation';
 import TopNavOne from '@/components/Header/TopNav/TopNavOne'
-import MenuOne from '@/components/Header/Menu/MenuOne'
+import MenuEight from '@/components/Header/Menu/MenuEight'
 import BreadcrumbProduct from '@/components/Breadcrumb/BreadcrumbProduct'
 import VariableProduct from '@/components/Product/Detail/VariableProduct';
 import Footer from '@/components/Footer/Footer'
@@ -19,7 +19,7 @@ const ProductVariableProduct = () => {
         <>
             <TopNavOne props="style-one bg-black" slogan="New customers save 10% with the code GET10" />
             <div id="header" className='relative w-full'>
-                <MenuOne props="bg-white" />
+                <MenuEight props="bg-white" />
                 <BreadcrumbProduct data={productData} productPage='variable' productId={productId} />
             </div>
             <VariableProduct data={productData} productId={productId} />

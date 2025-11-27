@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import TopNavOne from '@/components/Header/TopNav/TopNavOne';
-import MenuOne from '@/components/Header/Menu/MenuOne';
+import MenuEight from '@/components/Header/Menu/MenuEight';
 import BreadcrumbProduct from '@/components/Breadcrumb/BreadcrumbProduct';
 import Sale from '@/components/Product/Detail/MainProduct';
 import Footer from '@/components/Footer/Footer';

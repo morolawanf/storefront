@@ -13,7 +13,7 @@ const ForgotPassword = () => {
         <>
             <TopNavOne props="style-one bg-black" slogan="New customers save 10% with the code GET10" />
             <div id="header" className='relative w-full'>
-                {/* <MenuOne props="bg-transparent" /> */}
+                {/* <MenuEight props="bg-transparent" /> */}
                 <br />            </div>
             <div className="forgot-pass md:mb-20 mt-32 my-10">
                 <div className="container">
