@@ -1,30 +1,26 @@
-'use client'
-import React, { useState } from 'react'
-import TopNavOne from '@/components/Header/TopNav/TopNavOne'
-import MenuEight from '@/components/Header/Menu/MenuEight'
+'use client';
+import React, { useState } from 'react';
+import TopNavOne from '@/components/Header/TopNav/TopNavOne';
+import MenuEight from '@/components/Header/Menu/MenuEight';
 import Breadcrumb from '@/components/Breadcrumb/Breadcrumb';
-import Footer from '@/components/Footer/Footer'
+import Footer from '@/components/Footer/Footer';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
 
 const Faqs = () => {
-    const [activeTab, setActiveTab] = useState<string | undefined>('how to buy')
-    const [activeQuestion, setActiveQuestion] = useState<string | undefined>('')
+    const [activeTab, setActiveTab] = useState<string | undefined>('how to buy');
+    const [activeQuestion, setActiveQuestion] = useState<string | undefined>('');
 
     const handleActiveTab = (tab: string) => {
-        setActiveTab(tab)
-    }
+        setActiveTab(tab);
+    };
 
     const handleActiveQuestion = (question: string) => {
-        setActiveQuestion(prevQuestion => prevQuestion === question ? undefined : question)
-    }
+        setActiveQuestion(prevQuestion => prevQuestion === question ? undefined : question);
+    };
 
     return (
         <>
-            <TopNavOne props="style-one bg-black" slogan="New customers save 10% with the code GET10" />
-            <div id="header" className='relative w-full'>
-                <MenuEight props="bg-transparent" />
-                <Breadcrumb heading='FAQs' subHeading='FAQs' />
-            </div>
+
             <div className='faqs-block md:py-20 py-10'>
                 <div className="container">
                     <div className="flex justify-between">
@@ -493,7 +489,7 @@ const Faqs = () => {
             </div>
             <Footer />
         </>
-    )
-}
+    );
+};
 
-export default Faqs
+export default Faqs;

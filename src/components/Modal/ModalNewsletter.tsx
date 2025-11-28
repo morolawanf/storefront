@@ -78,7 +78,7 @@ const ModalNewsletter = () => {
                     </div>
                     <button
                       className="quick-view-btn button-main sm:py-3 py-2 sm:px-5 px-4 bg-black hover:bg-green text-white rounded-full whitespace-nowrap"
-                      onClick={() => openQuickview(item)}>
+                      onClick={() => openQuickview(item as never)}>
                       QUICK VIEW
                     </button>
                   </div>

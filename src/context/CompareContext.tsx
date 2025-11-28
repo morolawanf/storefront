@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useReducer, useEffect } fro
 import { ProductDetail } from '@/types/product';
 import toast from 'react-hot-toast';
 
-interface CompareItem extends ProductDetail {
+export interface CompareItem extends ProductDetail {
 }
 
 interface CompareState {

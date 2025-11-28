@@ -20,7 +20,7 @@ type RawTier = Partial<{
 }>;
 
 export function normalizePricingTiers(rawTiers?: RawTier[] | null): NormalizedPricingTier[] {
-  if (!Array.isArray(rawTiers)) {
+  if (!rawTiers || !Array.isArray(rawTiers)) {
     return [];
   }
 
@@ -54,21 +54,20 @@ export function normalizePricingTiers(rawTiers?: RawTier[] | null): NormalizedPr
       }
 
       if (!Number.isFinite(value)) {
-        if (strategy === 'fixedPrice') {
-          value = 0;
-        } else {
-          value = 0;
-        }
+        value = 0;
       }
 
-      return {
+      const tier: NormalizedPricingTier = {
         minQty,
-        maxQty,
         strategy,
         value: Number(value),
-      } satisfies NormalizedPricingTier;
+      };
+      if (maxQty !== undefined) {
+        tier.maxQty = maxQty;
+      }
+      return tier;
     })
-    .filter((tier): tier is NormalizedPricingTier => Boolean(tier));
+    .filter((tier): tier is NormalizedPricingTier => tier !== null);
 }
 
 export function calculateTierBasePrice(basePrice: number, tier: NormalizedPricingTier): number {

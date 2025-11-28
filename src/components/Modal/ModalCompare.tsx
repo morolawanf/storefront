@@ -1,36 +1,36 @@
-'use client'
+'use client';
 
-import React from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
+import React from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
-import { useModalCompareContext } from '@/context/ModalCompareContext'
-import { useCompare } from '@/context/CompareContext'
-import { ProductType } from '@/type/ProductType'
-import { getCdnUrl } from '@/libs/cdn-url'
+import { useModalCompareContext } from '@/context/ModalCompareContext';
+import { CompareItem, useCompare } from '@/context/CompareContext';
+import { ProductType } from '@/type/ProductType';
+import { getCdnUrl } from '@/libs/cdn-url';
+import { formatToNaira } from '@/utils/currencyFormatter';
 
 // Helper: pick best image for compare – prefer description_images cover, then first description image,
 // then cover from images, then first image. Returns raw URL (to be wrapped with getCdnUrl).
-const selectCompareImage = (product: ProductType): string => {
-    const descCover = product.description_images?.find((img) => img.cover_image)?.url
-    if (descCover) return descCover
-    const firstDesc = product.description_images?.[0]?.url
-    if (firstDesc) return firstDesc
-    const imagesCover = product.images?.find((img) => img.cover_image)?.url
-    if (imagesCover) return imagesCover
-    return product.images?.[0]?.url ?? ''
-}
+const selectCompareImage = (product: CompareItem): string => {
+    const descCover = product.description_images?.find((img) => img.cover_image)?.url;
+    if (descCover) return descCover;
+    const firstDesc = product.description_images?.[0]?.url;
+    if (firstDesc) return firstDesc;
+    return '';
+
+};
 
 const ModalCompare = () => {
     const { isModalOpen, closeModalCompare } = useModalCompareContext();
-    const { compareState, removeFromCompare, clearCompare } = useCompare()
+    const { compareState, removeFromCompare, clearCompare } = useCompare();
 
     return (
         <>
             <div className={`modal-compare-block`}>
                 <div
                     className={`modal-compare-main py-6 ${isModalOpen ? 'open' : ''}`}
-                    onClick={(e) => { e.stopPropagation() }}
+                    onClick={(e) => { e.stopPropagation(); }}
                 >
                     <div
                         className="close-btn absolute 2xl:right-6 right-4 2xl:top-6 md:-top-4 top-3 lg:w-10 w-6 lg:h-10 h-6 rounded-full bg-surface flex items-center justify-center duration-300 cursor-pointer hover:bg-black hover:text-white"
@@ -42,7 +42,7 @@ const ModalCompare = () => {
                         <div className="content-main flex items-center justify-between xl:gap-10 gap-6 w-full max-md:flex-wrap">
                             <div className="heading5 flex-shrink-0 max-md:w-full">Compare <br className='max-md:hidden' />Products</div>
                             <div className="list-product flex items-center w-full gap-4">
-                                {compareState.compareArray.slice(0, 3).map((product: ProductType) => (
+                                {compareState.compareArray.slice(0, 3).map((product, i) => (
                                     <div key={product._id} className='item p-3 border border-line rounded-xl relative'>
                                         <div className="infor flex items-center gap-4">
                                             <div className="bg-img w-[100px] h-[100px] flex-shrink-0 rounded-lg overflow-hidden">
@@ -56,12 +56,10 @@ const ModalCompare = () => {
                                             </div>
                                             <div className=''>
                                                 <div className="name text-title">{product.name}</div>
-                                                <div className="product-price text-title mt-2">${product.price}.00</div>
+                                                <div className="product-price text-title mt-2">{formatToNaira(product.price)}</div>
                                             </div>
                                         </div>
-                                        <div className="close-btn absolute -right-4 -top-4 w-8 h-8 rounded-full bg-red text-white flex items-center justify-center duration-300 cursor-pointer hover:bg-black" onClick={() => removeFromCompare(product._id)}>
-                                            <Icon.X size={14} />
-                                        </div>
+
                                     </div>
                                 ))}
                             </div>
@@ -72,7 +70,7 @@ const ModalCompare = () => {
                                             type="button"
                                             disabled
                                             className='button-main whitespace-nowrap opacity-60 cursor-not-allowed'
-                                            onClick={(e) => { e.stopPropagation() }}
+                                            onClick={(e) => { e.stopPropagation(); }}
                                         >
                                             Compare Products
                                         </button>
@@ -104,7 +102,7 @@ const ModalCompare = () => {
                 </div>
             </div >
         </>
-    )
-}
+    );
+};
 
-export default ModalCompare
+export default ModalCompare;

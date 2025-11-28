@@ -1,20 +1,10 @@
-'use client'
-import React from 'react'
-import Image from 'next/image';
-import Link from 'next/link';
-import TopNavOne from '@/components/Header/TopNav/TopNavOne'
-import MenuEight from '@/components/Header/Menu/MenuEight'
-import Breadcrumb from '@/components/Breadcrumb/Breadcrumb';
-import Footer from '@/components/Footer/Footer'
+'use client';
+import React from 'react';
+import Footer from '@/components/Footer/Footer';
 
 const ContactUs = () => {
     return (
         <>
-            <TopNavOne props="style-one bg-black" slogan="New customers save 10% with the code GET10" />
-            <div id="header" className='relative w-full'>
-                <MenuEight props="bg-transparent" />
-                <Breadcrumb heading='Contact us' subHeading='Contact us' />
-            </div>
             <div className='contact-us md:py-20 py-10'>
                 <div className="container">
                     <div className="flex justify-between max-lg:flex-col gap-y-10">
@@ -57,7 +47,7 @@ const ContactUs = () => {
             </div>
             <Footer />
         </>
-    )
-}
+    );
+};
 
-export default ContactUs
+export default ContactUs;

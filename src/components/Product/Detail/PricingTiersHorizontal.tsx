@@ -26,7 +26,7 @@ const PricingTiersHorizontal: React.FC<PricingTiersHorizontalProps> = ({
     currentQuantity = 1,
     onTierClick,
 }) => {
-    const resolvedTiers = tiers.length > 0 ? tiers : [{ minQty: 1, strategy: 'fixedPrice', value: Math.max(0, basePrice) }];
+    const resolvedTiers = tiers.length > 0 ? tiers : [{ minQty: 1, strategy: 'fixedPrice' as const, value: Math.max(0, basePrice) }];
     const activeTier = findTierForQuantity(resolvedTiers, currentQuantity);
     const comparisonBase = saleMultiplier < 1 ? basePrice * saleMultiplier : basePrice;
     const showSale = saleMultiplier < 1;

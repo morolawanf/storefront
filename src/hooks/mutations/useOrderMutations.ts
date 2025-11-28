@@ -38,7 +38,7 @@ export function useCancelOrder() {
       const response = await apiClient.post<CancelOrderResponse>(api.orders.cancel(orderId), {
         reason,
       });
-      return response.data;
+      return response.data!;
     },
     onSuccess: (data, { orderId }) => {
       // Invalidate order queries to reflect updated status and stock
@@ -74,7 +74,7 @@ export function useHandlePaymentFailure() {
       const response = await apiClient.post<CancelOrderResponse>(
         `/myOrder/orders/${orderId}/payment-failed`
       );
-      return response.data;
+      return response.data!;
     },
     onSuccess: (data, orderId) => {
       // Invalidate order queries

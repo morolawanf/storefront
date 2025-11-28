@@ -42,7 +42,7 @@ interface SaleVariant {
  * @param selectedAttributes - Map of selected attribute names to child names
  * @param quantity - Purchase quantity
  * @returns Object with breakdown of pricing
- */
+
 export function calculateTotalPrice(
   product: ProductDetail,
   selectedAttributes: SelectedAttributes,
@@ -70,7 +70,7 @@ export function calculateTotalPrice(
       if (selectedChildName) {
         const selectedChild = attribute.children.find((child) => child.name === selectedChildName);
         if (selectedChild) {
-          attributePrice += selectedChild.price;
+          attributePrice += selectedChild?.price || 0;
         }
       }
     }
@@ -148,6 +148,7 @@ export function calculateTotalPrice(
     appliedSale,
   };
 }
+ */
 
 /**
  * Build variant ID from selected attributes
@@ -205,7 +206,7 @@ export function calculateTierPrice(
 
 /**
  * Check if all required attributes are selected
- */
+
 export function validateAttributeSelection(
   product: ProductDetail,
   selectedAttributes: SelectedAttributes
@@ -230,10 +231,11 @@ export function validateAttributeSelection(
     missingAttributes,
   };
 }
+   */
 
 /**
  * Auto-select first available (in-stock) variant for each attribute
- */
+
 export function autoSelectAttributes(product: ProductDetail): SelectedAttributes {
   const selected: SelectedAttributes = {};
 
@@ -250,10 +252,11 @@ export function autoSelectAttributes(product: ProductDetail): SelectedAttributes
 
   return selected;
 }
+   */
 
 /**
  * Check if product is completely out of stock
- */
+
 export function isProductOutOfStock(product: ProductDetail): boolean {
   // Check base stock
   if (!product.stock || product.stock <= 0) {
@@ -267,6 +270,7 @@ export function isProductOutOfStock(product: ProductDetail): boolean {
   }
   return false;
 }
+ */
 
 /**
  * Calculate "Sold It" progress for Limited sales

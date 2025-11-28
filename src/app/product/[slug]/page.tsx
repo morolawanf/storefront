@@ -11,6 +11,7 @@ import Footer from '@/components/Footer/Footer';
 import BreadcrumbProduct from '@/components/Breadcrumb/BreadcrumbProduct';
 import type { ProductDetail } from '@/hooks/queries/useProduct';
 import removeMarkdown from "markdown-to-text";
+import { getProductDisplayPrice } from '@/utils/cart-pricing';
 
 interface ProductPageProps {
     params: Promise<{ slug: string; }>;
@@ -57,10 +58,9 @@ export async function generateMetadata({ params }: ProductPageProps) {
     }
 
     // Calculate discount percentage if available
-    const hasDiscount = product.sale?.isActive && product.sale.variants.length > 0;
-    const discount = hasDiscount
-        ? product.sale!.variants.find(v => v.variantId === null)?.discount
-        : null;
+    const { discountPercentage } = getProductDisplayPrice(product);
+    const hasDiscount = discountPercentage > 0;
+    const discount = hasDiscount ? discountPercentage : null;
 
     const priceText = discount
         ? `$${(product.price * (1 - discount / 100)).toFixed(2)} (${discount}% off)`

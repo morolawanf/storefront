@@ -109,15 +109,15 @@ export interface Product {
   rating?: number;
   rate?: number; // Alias for rating
   status?: 'active' | 'inactive' | 'archived';
-  sale?: ProductSale ; // NEW: Sale information
-  
+  sale?: ProductSale; // NEW: Sale information
+
   // Legacy fields for backward compatibility
   type?: string; // Category name as string (legacy)
   sold?: number; // Calculated as originStock - stock
   quantity?: number; // Alias for stock
   quantityPurchase?: number; // Quantity to purchase (cart-specific, usually 1)
   action?: string; // Legacy action field
-  
+
   createdAt?: string;
   updatedAt?: string;
 }
