@@ -454,6 +454,11 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                     placeholderSrc={`${getProductImageCdnUrl(rawData)}?class=minify`}
                                     src={getProductImageCdnUrl(rawData)}
                                     alt={data.name}
+                                    wrapperProps={
+                                        {
+                                            style: { transitionDelay: '0.5s' }
+                                        }
+                                    }
                                     className='w-full h-full object-cover duration-700'
                                     wrapperClassName='w-full h-full object-cover duration-700'
                                 />
