@@ -173,7 +173,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             console.log('JWT callback - token set to:', result.data.token);
           }
         } catch (error) {
-          console.error('Error fetching token in JWT callback:', error);
+          throw new AuthenticationFailedError('Something went wrong authenticating jwt');
+          // console.error('Error fetching token in JWT callback:', error);
         }
       }
       // For credentials login
