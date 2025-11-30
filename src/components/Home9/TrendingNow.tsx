@@ -39,6 +39,10 @@ const TrendingNow = () => {
                     <div className="list-trending section-swiper-navigation style-small-border style-outline md:mt-10 mt-6">
                         <Swiper
                             spaceBetween={12}
+                            autoplay={{
+                                delay: 8000,
+                                disableOnInteraction: true,
+                            }}
                             slidesPerView={2}
                             navigation
                             virtual={typeof window !== "undefined" ? false : true}

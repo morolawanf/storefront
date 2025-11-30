@@ -36,7 +36,7 @@ const SliderNine = () => {
                             modules={[Pagination, Autoplay]}
                             className='h-full relative rounded-2xl overflow-hidden'
                             autoplay={{
-                                delay: 4000,
+                                delay: 5000,
                             }}
                         >
                             {TopGroupBanners.map((banner, index) => (

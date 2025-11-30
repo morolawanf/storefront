@@ -452,7 +452,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                     <Icon.CheckCircle size={20} className='checked-icon' />
                                 </div>
                             </div>
-                            <Link href={`/product/${data.slug}`} className="product-img w-full h-full aspect-[3/4] block">
+                            <Link href={`/product/${data.slug}`} prefetch className="product-img w-full h-full aspect-[3/4] block">
                                 <Image
                                     effect={'blur'}
                                     placeholderSrc={`${getProductImageCdnUrl(rawData)}?class=minify`}
@@ -628,7 +628,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                             )}
 
                             <div className='w-full relative '>
-                                <Link href={`/product/${data.slug}`} className="product-name text-title duration-300 hover-underline-animation cursor-pointer">{data.name}</Link>
+                                <Link href={`/product/${data.slug}`} prefetch className="product-name text-title duration-300 hover-underline-animation cursor-pointer">{data.name}</Link>
                                 {colors.length > 0 && (
                                     <div className="list-color py-2 max-md:hidden flex items-center gap-3 flex-wrap duration-500">
                                         {colors.map((item, index) => (
