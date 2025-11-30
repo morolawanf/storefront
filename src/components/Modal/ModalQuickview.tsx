@@ -27,6 +27,7 @@ import {
 import { ProductVariant } from '@/types/product';
 import Link from 'next/link';
 import { formatToNaira } from '@/utils/currencyFormatter';
+import PaymentMethodsBadge from '../Product/PaymentMethodsBadge';
 
 const ModalQuickview = () => {
     const [photoIndex, setPhotoIndex] = useState(0);
@@ -228,7 +229,7 @@ const ModalQuickview = () => {
                 <div className="left lg:w-[388px] md:w-[300px] flex-shrink-0 px-6">
                     <div className="bg-img w-full aspect-[3/4] bg-gray-200 rounded-[20px]" />
                 </div>
-                <div className="right w-full px-4">
+                <div className="right w-full px-3 sm:px-4">
                     <div className="heading pb-6 px-4">
                         <div className="h-8 bg-gray-200 rounded w-1/3" />
                     </div>
@@ -279,7 +280,7 @@ const ModalQuickview = () => {
                         <SkeletonLoader />
                     ) : (
                         <div className="flex h-full max-md:flex-col-reverse gap-y-6">
-                            <div className="left lg:w-[388px] md:w-[300px] flex-shrink-0 px-6">
+                            <div className="left lg:w-[388px] md:w-[300px] flex-shrink-0 px-6 hidden md:block">
                                 <div className="list-img max-md:flex items-center gap-4">
                                     {product?.description_images?.map((item, index) => (
                                         <div className="bg-img w-full aspect-[3/4] max-md:w-[150px] max-md:flex-shrink-0 rounded-[20px] overflow-hidden md:mt-6" key={index}>
@@ -295,7 +296,7 @@ const ModalQuickview = () => {
                                     ))}
                                 </div>
                             </div>
-                            <div className="right w-full px-4">
+                            <div className="right w-full px-3 sm:px-4">
                                 <div className="heading pb-6 px-4 flex items-center justify-between relative">
                                     <div className="heading5">Quick View</div>
                                     <div
@@ -305,7 +306,7 @@ const ModalQuickview = () => {
                                         <Icon.X size={14} />
                                     </div>
                                 </div>
-                                <div className="product-infor px-4">
+                                <div className="product-infor sm:px-4">
                                     <div className="flex justify-between">
                                         <div>
                                             <div className="caption2 text-secondary font-semibold uppercase">{product?.category?.name}</div>
@@ -326,11 +327,28 @@ const ModalQuickview = () => {
                                             )}
                                         </div>
                                     </div>
-                                    <div className="flex items-center mt-3">
-                                        <Rate currentRate={product?.rating || 0} size={14} />
-                                        <span className='caption1 text-secondary'>(1.234 reviews)</span>
+                                    <div className="flex items-center mt-2">
+                                        <Rate currentRate={product?.reviewStats.averageRating || 0} size={14} />
+                                        <span className='caption1 text-secondary'>({product?.reviewStats.totalReviews || 0} reviews)</span>
                                     </div>
-                                    <div className="flex items-center gap-3 flex-wrap mt-5 pb-6 border-b border-line">
+
+                                    <div className="list-img !h-auto items-center gap-4 my-4 flex md:hidden">
+                                        {product?.description_images?.map((item, index) => (
+                                            <div className="bg-img w-full aspect-video  rounded-[20px] overflow-hidden md:mt-6" key={index}>
+                                                <Image
+                                                    src={getCdnUrl(item.url)}
+                                                    width={1500}
+                                                    height={2000}
+                                                    alt={product.name}
+                                                    priority={true}
+                                                    className='w-full h-full object-cover'
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+
+
+                                    <div className="flex items-center gap-1.5 md:gap-3 flex-wrap md:mt-5 pb-6 border-b border-line">
                                         {saleInfo.hasActiveSale ? (
                                             <>
                                                 <div className="product-price heading5">{formatToNaira(saleInfo.discountedPrice)}</div>
@@ -343,7 +361,7 @@ const ModalQuickview = () => {
                                         ) : (
                                             <div className="product-price heading5">{formatToNaira(product?.price || 0)}</div>
                                         )}
-                                        <div className='desc text-secondary mt-3 w-full' dangerouslySetInnerHTML={{ __html: product?.description || '' }} />
+                                        <div className='desc text-secondary md:mt-3 w-full' dangerouslySetInnerHTML={{ __html: product?.description || '' }} />
                                     </div>
                                     <div className="list-action mt-6">
                                         {showSaleProgress && (
@@ -358,7 +376,7 @@ const ModalQuickview = () => {
                                                     </div>
                                                     <div className="flex items-center gap-1 mt-2">
                                                         <span>{percentSold}% Sold -</span>
-                                                        <span className='text-secondary'>Only {availableStock} item(s) left in stock!</span>
+                                                        <span className='text-secondary'>{availableStock} units left!</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -400,7 +418,7 @@ const ModalQuickview = () => {
                                         ))}
                                         <div className="text-title mt-5">Quantity:</div>
                                         <div className="choose-quantity flex items-center max-xl:flex-wrap lg:justify-between gap-5 mt-3">
-                                            <div className="quantity-block md:p-3 max-md:py-1.5 max-md:px-3 flex items-center justify-between rounded-lg border border-line sm:w-[180px] w-[120px] flex-shrink-0">
+                                            <div className="quantity-block md:p-3 max-md:py-1.5 max-md:px-3 flex items-center justify-between rounded-lg border border-line sm:w-[140px] w-[120px] flex-shrink-0">
                                                 <Icon.Minus
                                                     onClick={handleDecreaseQuantity}
                                                     className={`${quantity === 1 ? 'disabled' : ''} cursor-pointer body1`}
@@ -414,7 +432,7 @@ const ModalQuickview = () => {
                                             {product.stock > 0 ? (
                                                 <div
                                                     onClick={handleAddToCart}
-                                                    className={`button-main w-full text-center bg-white text-black border border-black cursor-pointer`}
+                                                    className={`flex-1 button-main w-full text-center bg-white text-black border border-black cursor-pointer`}
                                                 >
                                                     Add To Cart
                                                 </div>
@@ -455,11 +473,11 @@ const ModalQuickview = () => {
                                                 <span className="text-title">Estimated Delivery:</span>
                                                 <span className="text-secondary">14 January - 18 January</span>
                                             </div>
-                                            <div className="flex items-center flex-wrap gap-1 mt-3">
+                                            {/* <div className="flex items-center flex-wrap gap-1 mt-3">
                                                 <Icon.Eye className='body1' />
                                                 <span className="text-title">38</span>
                                                 <span className="text-secondary">people viewing this product right now!</span>
-                                            </div>
+                                            </div> */}
                                             <div className="flex items-center gap-1 mt-3">
                                                 <div className="text-title">SKU:</div>
                                                 <div className="text-secondary">53453412</div>
@@ -475,67 +493,9 @@ const ModalQuickview = () => {
                                                 </div>
                                             )}
                                         </div>
-                                        <div className="list-payment mt-7">
-                                            <div className="main-content lg:pt-8 pt-6 lg:pb-6 pb-4 sm:px-4 px-3 border border-line rounded-xl relative max-md:w-2/3 max-sm:w-full">
-                                                <div className="heading6 px-5 bg-white absolute -top-[14px] left-1/2 -translate-x-1/2 whitespace-nowrap">Guranteed safe checkout</div>
-                                                <div className="list grid grid-cols-6">
-                                                    <div className="item flex items-center justify-center lg:px-3 px-1">
-                                                        <Image
-                                                            src={'/images/payment/Frame-0.png'}
-                                                            width={500}
-                                                            height={450}
-                                                            alt='payment'
-                                                            className='w-full'
-                                                        />
-                                                    </div>
-                                                    <div className="item flex items-center justify-center lg:px-3 px-1">
-                                                        <Image
-                                                            src={'/images/payment/Frame-1.png'}
-                                                            width={500}
-                                                            height={450}
-                                                            alt='payment'
-                                                            className='w-full'
-                                                        />
-                                                    </div>
-                                                    <div className="item flex items-center justify-center lg:px-3 px-1">
-                                                        <Image
-                                                            src={'/images/payment/Frame-2.png'}
-                                                            width={500}
-                                                            height={450}
-                                                            alt='payment'
-                                                            className='w-full'
-                                                        />
-                                                    </div>
-                                                    <div className="item flex items-center justify-center lg:px-3 px-1">
-                                                        <Image
-                                                            src={'/images/payment/Frame-3.png'}
-                                                            width={500}
-                                                            height={450}
-                                                            alt='payment'
-                                                            className='w-full'
-                                                        />
-                                                    </div>
-                                                    <div className="item flex items-center justify-center lg:px-3 px-1">
-                                                        <Image
-                                                            src={'/images/payment/Frame-4.png'}
-                                                            width={500}
-                                                            height={450}
-                                                            alt='payment'
-                                                            className='w-full'
-                                                        />
-                                                    </div>
-                                                    <div className="item flex items-center justify-center lg:px-3 px-1">
-                                                        <Image
-                                                            src={'/images/payment/Frame-5.png'}
-                                                            width={500}
-                                                            height={450}
-                                                            alt='payment'
-                                                            className='w-full'
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+
+                                        <PaymentMethodsBadge className="mt-7 w-full" innerClassname='max-md:w-full' title="Guaranteed safe checkout" />
+
                                     </div>
                                 </div>
                             </div>

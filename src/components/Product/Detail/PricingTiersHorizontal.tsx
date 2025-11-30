@@ -35,10 +35,10 @@ const PricingTiersHorizontal: React.FC<PricingTiersHorizontalProps> = ({
     return (
         <div className="pricing-tiers-horizontal mt-6">
             <div className="flex items-center justify-between mb-3">
-                <div className="text-title">Wholesale prices</div>
+                <div className="text-title">Wholesale deals</div>
             </div>
 
-            <div className="grid lg:grid-cols-3 sm:grid-cols-3 grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid lg:grid-cols-3 sm:grid-cols-3 gap-2 sm:gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(115px, 1fr))' }}>
                 {resolvedTiers.map((tier, index) => {
                     const rangeLabel = tier.maxQty ? `${tier.minQty}-${tier.maxQty}` : `${tier.minQty}+`;
                     const originalPrice = calculateTierBasePrice(basePrice, tier);

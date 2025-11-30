@@ -24,7 +24,7 @@ const ModalSearch = () => {
         <>
             <div className={`modal-search-block`} onClick={closeModalSearch}>
                 <div
-                    className={`modal-search-main md:p-10 p-6 rounded-[32px] ${isModalOpen ? 'open' : ''}`}
+                    className={`modal-search-main md:p-10 p-6 rounded-[32px] rounded-tl-none ${isModalOpen ? 'open' : ''}`}
                     onClick={(e) => { e.stopPropagation(); }}
                 >
                     <div className="form-search relative">

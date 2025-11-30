@@ -16,7 +16,7 @@ export default function Fullwidth() {
     return (
         <>
             {/* <ShopFilterCanvas data={productData} productPerPage={12} dataType={type} /> */}
-            <Footer />
+            all categories
         </>
     );
 }

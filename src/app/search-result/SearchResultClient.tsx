@@ -146,6 +146,7 @@ export default function SearchResultClient({ searchQuery }: SearchResultClientPr
 
     const products = productsData?.data;
     const meta = productsData?.meta;
+    console.log({ meta });
 
     // Handlers
     const handleLayoutClick = (layout: LayoutType) => setLayoutCol(layout);
@@ -230,7 +231,7 @@ export default function SearchResultClient({ searchQuery }: SearchResultClientPr
                                     </svg>
                                     <span>Filters</span>
                                 </div>
-                                <div className="choose-layout flex items-center gap-2">
+                                <div className="choose-layout items-center gap-2 hidden sm:flex">
                                     <div
                                         className={`item three-col p-2 border border-line rounded flex items-center justify-center cursor-pointer ${layoutCol === 'grid3' ? 'active' : ''}`}
                                         onClick={() => handleLayoutClick('grid3')}
@@ -267,7 +268,7 @@ export default function SearchResultClient({ searchQuery }: SearchResultClientPr
                                 </div>
                             </div>
                             <div className="right flex items-center gap-3">
-                                <label htmlFor='select-filter' className="caption1 capitalize">Sort by</label>
+                                <label htmlFor='select-filter ' className="caption1 capitalize hidden xs:block">Sort by</label>
                                 <div className="select-block relative">
                                     <select
                                         id="select-filter"

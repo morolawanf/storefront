@@ -206,7 +206,6 @@ const BlogDefault = () => {
                     </div>
                 </div>
             </div>
-            <Footer />
         </>
     );
 };

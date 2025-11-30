@@ -487,7 +487,6 @@ const Faqs = () => {
                     </div>
                 </div>
             </div>
-            <Footer />
         </>
     );
 };

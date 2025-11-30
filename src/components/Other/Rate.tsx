@@ -10,11 +10,14 @@ const Rate: React.FC<RateProps> = ({ currentRate, size }) => {
     const arrOfStar = [];
 
     if (currentRate !== undefined && currentRate !== null) {
+        // Round to nearest 0.5
+        const roundedRate = Math.round(currentRate * 2) / 2;
+
         for (let i = 1; i <= 5; i++) {
-            if (currentRate >= i) {
+            if (roundedRate >= i) {
                 // Full star
                 arrOfStar.push(<Icon.Star key={i} size={size} color="#ECB018" weight="fill" />);
-            } else if (currentRate >= i - 0.5) {
+            } else if (roundedRate >= i - 0.5) {
                 // Half star
                 arrOfStar.push(<Icon.StarHalf key={i} size={size} color="#ECB018" weight="fill" />);
             } else {

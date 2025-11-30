@@ -19,7 +19,6 @@ const CustomerFeedbacks = () => {
                     </div>
                 </div>
             </div>
-            <Footer />
         </>
     );
 };

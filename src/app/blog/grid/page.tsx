@@ -79,7 +79,6 @@ const BlogGrid = () => {
                     )}
                 </div>
             </div>
-            <Footer />
         </>
     );
 };

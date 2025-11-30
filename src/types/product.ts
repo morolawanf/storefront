@@ -98,6 +98,10 @@ export interface Product {
   lowStockThreshold?: number;
   description?: string;
   tags?: string[];
+  reviewStats:{
+    averageRating: number;
+    totalReviews:number;
+  }
   attributes?: ProductVariant[]; // Updated to match backend structure
   specifications?: ProductSpecification[];
   category?: ProductCategory;

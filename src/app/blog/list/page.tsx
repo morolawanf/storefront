@@ -207,7 +207,6 @@ const BlogList = () => {
                     </div>
                 </div>
             </div>
-            <Footer />
         </>
     );
 };

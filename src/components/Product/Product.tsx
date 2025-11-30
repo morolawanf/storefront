@@ -84,6 +84,10 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                 description_images: [], // not in ProductListItem
                 action: 'add to cart',
                 createdAt: '', // not in ProductListItem
+                reviewStats: {
+                    averageRating: 0,
+                    totalReviews: 0,
+                }
             } as ProductDetail;
         }
         return rawData;
@@ -599,7 +603,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                         <div className="product-infor mt-4 lg:mb-7">
                             {showSaleProgress && (
                                 <div className="product-sold pb-2">
-                                    <div className="progress bg-line h-[5px] w-full rounded-full overflow-hidden relative">
+                                    <div className="progress bg-line h-[3px] md:h-[5px] w-full rounded-full overflow-hidden relative">
                                         <div
                                             className={`progress-sold bg-red absolute left-0 top-0 h-full`}
                                             style={{ width: `${percentSold}%` }}
@@ -607,13 +611,13 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between gap-3 gap-y-1 flex-wrap mt-1">
-                                        <div className="text-button-uppercase">
-                                            <span className='text-secondary2 text-base font-medium'>Sold: </span>
-                                            <span className='text-base'>{soldQuantity}</span>
+                                        <div className="text-button-uppercase hidden xxs:block">
+                                            <span className='text-secondary2 text-sm lg:text-base font-medium'>Sold: </span>
+                                            <span className='text-sm lg:text-base'>{soldQuantity}</span>
                                         </div>
                                         <div className="text-button-uppercase">
-                                            <span className='text-secondary2 text-base font-medium'>Available: </span>
-                                            <span className='text-base'>{availableStock}</span>
+                                            <span className='text-secondary2 text-sm lg:text-base font-medium'>Available: </span>
+                                            <span className='text-sm lg:text-base'>{availableStock}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -654,7 +658,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                     <>
                                         <div className="product-price text-title">{formatToNaira(saleInfo.discountedPrice)}</div>
                                         <div className="product-origin-price caption1 text-secondary2"><del>{formatToNaira(saleInfo.originalPrice)}</del></div>
-                                        <div className="product-sale caption1 font-medium bg-green px-3 py-0.5 inline-block rounded-full">
+                                        <div className="product-sale text-xs lg:text-sm font-medium bg-green px-1.5 md:px-2 py-0.5 inline-block rounded-full">
                                             -{saleInfo.percentOff}%
                                         </div>
                                     </>

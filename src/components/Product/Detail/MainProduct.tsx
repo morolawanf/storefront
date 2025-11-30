@@ -730,11 +730,11 @@ const Sale: React.FC<Props> = ({ slug }) => {
                                             <div className="text-title">Ask A Question</div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-1 mt-3">
+                                    {/* <div className="flex items-center gap-1 mt-3">
                                         <Icon.Eye className='body1' />
                                         <div className="text-title">38</div>
                                         <div className="text-secondary">people viewing this product right now!</div>
-                                    </div>
+                                    </div> */}
                                     <div className="flex items-center gap-1 mt-3">
                                         <div className="text-title">SKU:</div>
                                         <div className="text-secondary">{product.sku || 'N/A'}</div>

@@ -1,16 +1,20 @@
 'use client';
 
-import React from 'react';
+import React, { Dispatch, SetStateAction } from 'react';
 import * as Icon from '@phosphor-icons/react/dist/ssr';
 
 interface OrderNotesSectionProps {
     isExpanded: boolean;
     onToggle: () => void;
+    notes: string;
+    setNotes: Dispatch<SetStateAction<string>>;
 }
 
 const OrderNotesSection: React.FC<OrderNotesSectionProps> = ({
     isExpanded,
     onToggle,
+    notes,
+    setNotes,
 }) => {
     return (
         <div className="notes-section border border-line rounded-lg mb-5 overflow-hidden">
@@ -38,6 +42,8 @@ const OrderNotesSection: React.FC<OrderNotesSectionProps> = ({
                         className="border border-line px-4 py-3 w-full rounded-lg min-h-[120px]"
                         id="note"
                         name="note"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
                         placeholder="Add any special instructions for your order...">
                     </textarea>
                 </div>

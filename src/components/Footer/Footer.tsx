@@ -10,7 +10,7 @@ const Footer = () => {
                 <div className="footer-main bg-surface">
                     <div className="container">
                         <div className="content-footer py-[60px] flex justify-between flex-wrap gap-y-8">
-                            <div className="company-infor basis-1/4 max-lg:basis-full pr-7">
+                            <div className="company-infor basis-2/4 max-lg:basis-full pr-7">
                                 <Link href={'/'} className="logo">
                                     <div className="heading4">OEPlast</div>
                                 </Link>
@@ -27,7 +27,7 @@ const Footer = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="right-content flex flex-wrap gap-y-8 basis-3/4 max-lg:basis-full">
+                            <div className="right-content flex flex-wrap gap-y-8 basis-2/4 max-lg:basis-full">
                                 <div className="list-nav flex justify-between basis-2/4 max-md:basis-full gap-4">
                                     <div className="item flex flex-col basis-1/2 ">
                                         <div className="text-button-uppercase pb-3">Infomation</div>

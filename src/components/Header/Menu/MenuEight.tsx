@@ -153,7 +153,7 @@ const MenuEight = () => {
                                     <div className="relative w-full h-full flex" ref={desktopInputAnchorRef}>
                                         <input
                                             type="text"
-                                            className="search-input h-full px-4 w-full border border-line rounded-l-lg"
+                                            className={`search-input h-full px-4 w-full border border-line rounded-l-lg ${shouldShowDropdown ? 'rounded-bl-none' : ''}`}
                                             placeholder="What are you looking for today?"
                                             value={searchKeyword}
                                             onChange={(e) => setSearchKeyword(e.target.value)}
@@ -175,10 +175,11 @@ const MenuEight = () => {
                                         />
                                         {shouldShowDropdown && (
                                             <AutocompleteDropdown
+                                                searchKeyword={searchKeyword}
                                                 open={shouldShowDropdown}
                                                 loading={isFetching}
                                                 suggestions={searchKeyword.trim().length >= 2 ? suggestions : []}
-                                                history={searchKeyword.trim().length < 2 ? history : []}
+                                                history={searchKeyword.trim().length < 12 ? history : []}
                                                 activeIndex={activeIndex}
                                                 anchorRef={desktopInputAnchorRef}
                                                 onSelectSuggestion={(item) => handleSelectSuggestion(item.name)}
@@ -331,7 +332,7 @@ const MenuEight = () => {
                                                 Back
                                             </div>
                                             <div className="list-nav-item w-full pt-2 pb-6 h-full">
-                                                <NavCategoriesMobile />
+                                                <NavCategoriesMobile handleMenuMobile={handleMenuMobile} />
                                             </div>
                                         </div>
                                     </li>

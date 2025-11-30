@@ -37,7 +37,6 @@ export default async function CategoryPage({
     return (
         <HydrationBoundary state={dehydrate(queryClient)}>
             <RouteClient slug={slug} searchParams={serverSearchParams} />
-            <Footer />
         </HydrationBoundary>
     );
 }

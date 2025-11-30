@@ -2,15 +2,18 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { cn } from '@/libs/utils';
 
 interface PaymentMethodsBadgeProps {
     title?: string;
     className?: string;
+    innerClassname?: string;
 }
 
 const PaymentMethodsBadge: React.FC<PaymentMethodsBadgeProps> = ({
     title = "Guaranteed safe checkout",
-    className = ""
+    className = "",
+    innerClassname
 }) => {
     const paymentMethods = [
         { src: '/images/payment/visa.webp', alt: 'Visa' },
@@ -22,7 +25,7 @@ const PaymentMethodsBadge: React.FC<PaymentMethodsBadgeProps> = ({
 
     return (
         <div className={`list-payment ${className}`}>
-            <div className="main-content lg:pt-8 pt-6 lg:pb-6 pb-4 sm:px-4 px-3 border border-line rounded-xl relative max-md:w-2/3 max-sm:w-full">
+            <div className={cn("main-content lg:pt-8 pt-6 lg:pb-6 pb-4 sm:px-4 px-3 border border-line rounded-xl relative max-md:w-2/3 max-sm:w-full", innerClassname)}>
                 <div className="heading6 px-5 bg-white absolute -top-[14px] left-1/2 -translate-x-1/2 whitespace-nowrap">
                     {title}
                 </div>

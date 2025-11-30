@@ -176,7 +176,6 @@ const BlogDetailOne = () => {
                     <NewsInsight data={blogData} start={0} limit={3} />
                 </div>
             </div>
-            <Footer />
         </>
     );
 };

@@ -85,7 +85,6 @@ const CompareContent = () => {
                         <div className="heading2 text-center">Loading products...</div>
                     </div>
                 </div>
-                <Footer />
             </>
         );
     }
@@ -103,7 +102,6 @@ const CompareContent = () => {
                         </Link>
                     </div>
                 </div>
-                <Footer />
             </>
         );
     }
@@ -121,7 +119,6 @@ const CompareContent = () => {
                         </Link>
                     </div>
                 </div>
-                <Footer />
             </>
         );
     }
@@ -308,7 +305,6 @@ const CompareContent = () => {
                     </div>
                 </div>
             </div>
-            <Footer />
         </>
     )
 }

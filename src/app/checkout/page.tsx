@@ -1,20 +1,12 @@
 'use client';
 import React, { useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
-import Breadcrumb from '@/components/Breadcrumb/Breadcrumb';
-import Footer from '@/components/Footer/Footer';
-import { ProductDetail } from '@/types/product';
-import productData from '@/data/Product.json';
-import Product from '@/components/Product/Product';
 import * as Icon from "@phosphor-icons/react/dist/ssr";
 import { useCart } from '@/context/CartContext';
-import { calculateCartTotals, calculateCartItemPricing } from '@/utils/cart-pricing';
-import type { CartSnapshotPayload } from '@/types/cart';
+import { calculateCartItemPricing } from '@/utils/cart-pricing';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { getCdnUrl } from '@/libs/cdn-url';
 import { useAllShippingConfig, LogisticsConfigRecord, LogisticsStateConfig, LogisticsLocationConfig } from '@/hooks/useLogisticsLocations';
 import { apiClient, handleApiError } from '@/libs/api/axios';
 import api from '@/libs/api/endpoints';
@@ -24,20 +16,17 @@ import CheckoutSuccess from '@/components/Checkout/CheckoutSuccess';
 import { useCheckoutStore } from '@/store/useCheckoutStore';
 import { usePaymentStore } from '@/store/usePaymentStore';
 import CorrectionReviewModal from '@/components/Modal/CorrectionReviewModal';
-import { CheckoutErrors, CheckoutCorrectionResponse } from '@/types/checkout';
-import { parseCheckoutErrors, buildCartUpdatePayload, hasProductIssues, hasOnlyNonProductIssues } from '@/utils/cartCorrections';
+import { CheckoutErrors } from '@/types/checkout';
+import { hasProductIssues } from '@/utils/cartCorrections';
 import Paystack from '@paystack/inline-js';
-import { formatToNaira } from '@/utils/currencyFormatter';
 import { useSession } from 'next-auth/react';
 import ShippingMethodSelector from '@/components/Checkout/ShippingMethodSelector';
 import ShippingInformationForm from '@/components/Checkout/ShippingInformationForm';
 import OrderNotesSection from '@/components/Checkout/OrderNotesSection';
 import OrderSummaryBlock from '@/components/Checkout/OrderSummaryBlock';
-import CartItemCard from '@/components/Checkout/CartItemCard';
 import { useAddresses } from '@/hooks/queries/useAddresses';
 import { useAddAddress } from '@/hooks/mutations/useAddressMutations';
 import { Address, AddAddressInput } from '@/types/user';
-import AddressSelector from '@/components/Checkout/AddressSelector';
 import toast from 'react-hot-toast';
 
 type ShippingFormState = {
@@ -140,6 +129,7 @@ const Checkout = () => {
     const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
     const [addressValidationError, setAddressValidationError] = useState<string | null>(null);
     const [saveManualAddressToAccount, setSaveManualAddressToAccount] = useState(true);
+    const [notes, setNotes] = useState<string>('');
 
     // Calculate subtotal from items using ModalCart's exact pricing method
     const subtotal = React.useMemo(() => {
@@ -456,6 +446,7 @@ const Checkout = () => {
             deliveryType,
             shippingCost: shippingCostValue,
             acceptChanges,
+            notes
         };
     }, [shippingMethod, calculatedShippingCost, selectedLocationMeta, items, shippingForm, activePayment, appliedCouponCodes, subtotal, resolvedDiscount]);
 
@@ -687,7 +678,8 @@ const Checkout = () => {
                             console.log('load', ll);
 
                         },
-                        onSuccess: (ss) => {
+                        onSuccess: async (ss) => {
+                            await verifyPaymentReference();
                             setPaymentSuccess(true);
                             clearCart();
                             console.log('success', ss);
@@ -954,7 +946,7 @@ const Checkout = () => {
 
 
                             <div className="information mt-5">
-                                <div className="heading5">Information</div>
+                                {/* <div className="heading5">Information</div> */}
 
                                 <ShippingMethodSelector
                                     currentMethod={shippingMethod}
@@ -1003,6 +995,8 @@ const Checkout = () => {
                                         )}
 
                                         <OrderNotesSection
+                                            notes={notes}
+                                            setNotes={setNotes}
                                             isExpanded={isNotesExpanded}
                                             onToggle={() => setIsNotesExpanded(!isNotesExpanded)}
                                         />
@@ -1013,7 +1007,7 @@ const Checkout = () => {
                                             checkoutSuccess={checkoutSuccess}
                                         />
 
-                                        <span className="hidden lg:block">
+                                        <span className="block lg:hidden">
                                             <CheckoutButton
                                                 pendingCorrections={!!pendingCorrections}
                                                 isAcceptingCorrections={isAcceptingCorrections}
@@ -1049,7 +1043,7 @@ const Checkout = () => {
                                 parsedCheckoutErrors={parsedCheckoutErrors}
                                 discountInfo={discountInfo}
                             />
-                            <span className="block lg:hidden">
+                            <span className="hidden lg:block">
                                 <CheckoutButton
                                     pendingCorrections={!!pendingCorrections}
                                     isAcceptingCorrections={isAcceptingCorrections}

@@ -51,7 +51,6 @@ const AboutUs = () => {
             </div>
             <Newsletter props="bg-green md:mt-20 mt-10" />
             <Instagram />
-            <Footer />
         </>
     );
 };

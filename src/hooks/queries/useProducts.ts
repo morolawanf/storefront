@@ -499,7 +499,7 @@ export const useSearchResultProducts = (params: {
 
       const attributeParams = serializeMap(params.attributes);
 
-      const response = await apiClient.get<ProductListItem[]>(api.products.searchResults, {
+      const response = await apiClient.getWithMeta<ProductListItem[], {total: number; page: number, pages: number, limit: number}>(api.products.searchResults, {
         params: {
           q: params.query,
           page: params.page,
@@ -517,7 +517,7 @@ export const useSearchResultProducts = (params: {
       if (!response.data) {
         throw new Error('No data returned from server');
       }
-      return response as unknown as { data: ProductListItem[]; meta: ProductListMeta };
+      return { data: response.data, meta: response.meta! };
     },
     staleTime: 1 * 60 * 1000, // 1 minute
   });

@@ -82,7 +82,6 @@ const CompareClient = () => {
                         <div className="heading2 text-center">Loading products...</div>
                     </div>
                 </div>
-                <Footer />
             </>
         );
     }
@@ -100,7 +99,6 @@ const CompareClient = () => {
                         </Link>
                     </div>
                 </div>
-                <Footer />
             </>
         );
     }
@@ -118,7 +116,6 @@ const CompareClient = () => {
                         </Link>
                     </div>
                 </div>
-                <Footer />
             </>
         );
     }
@@ -278,7 +275,6 @@ const CompareClient = () => {
                     </div>
                 </div>
             </div>
-            <Footer />
         </>
     )
 }

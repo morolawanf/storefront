@@ -35,7 +35,6 @@ const PageNotFound = () => {
                     </div>
                 </div>
             </div>
-            <Footer />
         </>
     );
 };

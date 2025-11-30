@@ -18,6 +18,7 @@ export interface AutocompleteDropdownProps {
     onSelectHistory: (term: string) => void;
     onClearHistory: () => void;
     classname?: string;
+    searchKeyword?: string;
 }
 
 const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
@@ -30,7 +31,8 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
     onSelectSuggestion,
     onSelectHistory,
     onClearHistory,
-    classname
+    classname,
+    searchKeyword
 }) => {
     // Compute dropdown width to match anchor
     const width = useMemo(() => {
@@ -52,6 +54,15 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
             role="listbox"
             aria-activedescendant={activeIndex >= 0 ? `autocomplete-option-${activeIndex}` : undefined}
         >
+            {searchKeyword && searchKeyword.length > 0 && (
+                <Link
+                    href={`/search-result?query=${searchKeyword}`}
+                    className="px-4 py-2 cursor-pointer bg-gray-50 hover:bg-gray-100 text-sm text-gray-800 w-full block"
+                >
+                    {`Search for "${searchKeyword}"`}
+                </Link>
+            )}
+
             {/* Loading state */}
             {loading && (
                 <>
@@ -59,6 +70,8 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
                     <div className="mx-4 my-3 text-sm bg-gray-200 h-7 w-[94%] animate-pulse rounded-lg" />
                 </>
             )}
+
+
 
             {/* Suggestions */}
             {!loading && suggestions.length > 0 && (
@@ -92,7 +105,7 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
             )}
 
             {/* Recent history */}
-            {!loading && suggestions.length === 0 && history.length > 0 && (
+            {history.length > 0 && (
                 <div>
                     <div className="flex items-center justify-between px-4 pt-3 pb-1">
                         <div className="text-xs uppercase tracking-wide text-gray-500">Recent searches</div>
@@ -125,7 +138,7 @@ const AutocompleteDropdown: React.FC<AutocompleteDropdownProps> = ({
                 </div>
             )}
 
-            {!loading && suggestions.length === 0 && history.length === 0 && (
+            {searchKeyword && searchKeyword.length > 0 && !loading && suggestions.length === 0 && history.length === 0 && (
                 <div className="px-4 py-3 text-sm text-gray-400">No suggestions</div>
             )}
         </div>

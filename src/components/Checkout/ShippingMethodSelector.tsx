@@ -23,6 +23,24 @@ const ShippingMethodSelector: React.FC<ShippingMethodSelectorProps> = ({
     };
 
     return (
+
+        <div className="my-6 checkout-block ">
+            <div className="heading5">Delivery</div>
+            <div className="deli_type mt-5">
+                <div className="item flex items-center gap-2 relative px-5 border border-line rounded-t-lg">
+                    <input type="radio" name="deli_type" id="store_type" className="cursor-pointer" checked={currentMethod === 'pickup'} onClick={() => onMethodChange('pickup')} />
+                    <label htmlFor="store_type" className="w-full py-4 cursor-pointer">Pickup in store</label>
+                    <Icon.Storefront className="text-xl absolute top-1/2 right-5 -translate-y-1/2" />
+                </div>
+                <div className="item flex items-center gap-2 relative px-5 border border-line rounded-b-lg">
+                    <input type="radio" name="deli_type" id="ship_type" className="cursor-pointer" checked={currentMethod === 'normal'} onClick={() => onMethodChange('normal')} />
+                    <label htmlFor="ship_type" className="w-full py-4 cursor-pointer">Shipping</label>
+                    <Icon.Truck className="text-xl absolute top-1/2 right-5 -translate-y-1/2" />
+                </div>
+            </div>
+        </div>
+    );
+    return (
         <div className="mt-5 mb-5 p-3 md:p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2">
                 <div className="flex items-center gap-2">

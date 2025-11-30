@@ -12,7 +12,7 @@ export default function WishlistLoading() {
                     <div className="list-product-block relative">
                         <div className="filter-heading flex items-center justify-between gap-5 flex-wrap">
                             <div className="left flex has-line items-center flex-wrap gap-5">
-                                <div className="choose-layout flex items-center gap-2">
+                                <div className="choose-layout items-center gap-2 hidden sm:flex">
                                     <div className="item four-col p-2 border border-line rounded flex items-center justify-center">
                                         <div className='flex items-center gap-0.5'>
                                             <span className='w-[3px] h-4 bg-secondary2 rounded-sm'></span>

@@ -78,7 +78,7 @@ const WishlistClient = () => {
                 <div className="list-product-block relative">
                     <div className="filter-heading flex items-center justify-between gap-5 flex-wrap">
                         <div className="left flex has-line items-center flex-wrap gap-5">
-                            <div className="choose-layout flex items-center gap-2">
+                            <div className="choose-layout items-center gap-2 hidden sm:flex">
                                 <div
                                     className={`item three-col p-2 border border-line rounded flex items-center justify-center cursor-pointer ${layoutCol === 3 ? 'active' : ''}`}
                                     onClick={() => handleLayoutCol(3)}

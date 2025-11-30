@@ -7,7 +7,7 @@ import { useCategories } from '@/hooks/queries/useCategories';
 import { ApiCategory } from '@/types/category';
 import { getCdnUrl } from '@/libs/cdn-url';
 
-const NavCategoriesMobile = () => {
+const NavCategoriesMobile = ({ handleMenuMobile }: { handleMenuMobile: () => void }) => {
     const { data: _CATEGORIES } = useCategories();
     const CATEGORIES = useMemo(() => _CATEGORIES || [], [_CATEGORIES]);
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -57,6 +57,7 @@ const NavCategoriesMobile = () => {
                     <CategorySection
                         key={category.slug}
                         category={category}
+                        handleMenuMobile={handleMenuMobile}
                         onInView={() => setActiveCategory(category.slug)}
                     />
                 ))}
@@ -68,9 +69,10 @@ const NavCategoriesMobile = () => {
 interface CategorySectionProps {
     category: ApiCategory;
     onInView: () => void;
+    handleMenuMobile: () => void;
 }
 
-const CategorySection = ({ category, onInView }: CategorySectionProps) => {
+const CategorySection = ({ category, onInView, handleMenuMobile }: CategorySectionProps) => {
     const ref = useRef<HTMLDivElement>(null);
     const isInView = useInView(ref, {
         margin: '-50% 0px -50% 0px', // Trigger when section is in the middle 20% of viewport
@@ -86,6 +88,7 @@ const CategorySection = ({ category, onInView }: CategorySectionProps) => {
         <div
             ref={ref}
             id={`category-section-${category.slug}`}
+            onClick={handleMenuMobile}
             className="py-4 border-b border-line last:border-b-0 my-5 "
         >
             {/* Category Header */}
