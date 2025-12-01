@@ -109,23 +109,23 @@ export default async function ServerQueries({ children }: { children: ReactNode;
 
         // Prefetch new products
         queryClient.prefetchQuery({
-            queryKey: ['products', 'new', 1],
+            queryKey: ['products', 'new', {page: 1}],
             queryFn: () => fetchNewProducts(1),
             staleTime: 5 * 60 * 1000, // 5 minutes
         }),
 
         // Prefetch week products
         queryClient.prefetchQuery({
-            queryKey: ['products', 'week', 1],
+            queryKey: ['products', 'week', {page:1}],
             queryFn: () => fetchWeekProducts(1),
-            staleTime: 10 * 60 * 1000, // 10 minutes
+            staleTime: 5 * 60 * 1000, // 10 minutes
         }),
 
         // Prefetch top sold products
         queryClient.prefetchQuery({
-            queryKey: ['products', 'topSold', 1],
+            queryKey: ['products', 'topSold', {page:1}],
             queryFn: () => fetchTopSoldProducts(1),
-            staleTime: 15 * 60 * 1000, // 15 minutes
+            staleTime: 5 * 60 * 1000, // 15 minutes
         }),
 
         // Prefetch deals of the day
