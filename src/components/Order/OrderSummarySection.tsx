@@ -145,10 +145,10 @@ export default function OrderSummarySection({ order, formatCurrency }: OrderSumm
                         </button>
                     </>
                 )}
-                {order.status === 'Processing' && (
-                    <button className="button-main flex-1">
+                {order?.shipment?.trackingNumber && order.status === 'Processing' && (
+                    <Link href={`/order-tracking?tracking=${order.shipment.trackingNumber}`} className="button-main flex-1">
                         Track Order
-                    </button>
+                    </Link>
                 )}
             </div>
 

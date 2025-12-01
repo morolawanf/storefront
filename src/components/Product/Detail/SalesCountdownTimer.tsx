@@ -34,7 +34,7 @@ const SalesCountdownTimer = ({ sale, salesType }: SalesCountdownTimerProps) => {
     const [timeLeft, setTimeLeft] = useState<CountdownTime>({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
     // Only display if salesType is 'Flash' and endDate exists
-    const shouldDisplay = salesType === 'Flash' && sale?.endDate;
+    const shouldDisplay = salesType === 'Flash' && sale?.endDate && new Date(sale.endDate).getTime() > Date.now();
 
     useEffect(() => {
         if (!shouldDisplay) return;

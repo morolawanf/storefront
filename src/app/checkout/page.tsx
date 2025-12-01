@@ -27,6 +27,7 @@ import OrderSummaryBlock from '@/components/Checkout/OrderSummaryBlock';
 import { useAddresses } from '@/hooks/queries/useAddresses';
 import { useAddAddress } from '@/hooks/mutations/useAddressMutations';
 import { Address, AddAddressInput } from '@/types/user';
+import { useLoginModalStore } from '@/store/useLoginModalStore';
 import toast from 'react-hot-toast';
 
 type ShippingFormState = {
@@ -121,6 +122,8 @@ const Checkout = () => {
         removeItem,
         clearCart
     } = useCart();
+    const { openLoginModal } = useLoginModalStore();
+    
 
     // Session and address management
     const { data: session } = useSession();
@@ -691,15 +694,27 @@ const Checkout = () => {
                 }
             }
         } catch (submitError) {
-            console.log(submitError);
+            let errorM: string;
+                if (axios.isAxiosError(submitError)) {
+                errorM = submitError.response?.data?.message || submitError.message;
+                } else if (submitError instanceof Error) {
+                errorM = submitError.message;
+                } else {
+                errorM = "An unknown error occurred.";
+                }
 
-            // Try to handle as correction error first
-            const isHandledAsCorrection = handleCheckoutCorrectionError(submitError);
+                 if(errorM === 'No token provided'){
+                    openLoginModal()
+                 }else{
 
-            if (!isHandledAsCorrection) {
-                // Not a correction error - show generic error message
-                setCheckoutError(handleApiError(submitError));
-            }
+                     // Try to handle as correction error first
+                     const isHandledAsCorrection = handleCheckoutCorrectionError(submitError);
+                     
+                     if (!isHandledAsCorrection) {
+                         // Not a correction error - show generic error message
+                         setCheckoutError(handleApiError(submitError));
+                        }
+                    }
         } finally {
             setIsSubmittingCheckout(false);
         }
