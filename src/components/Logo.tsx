@@ -22,7 +22,7 @@ const Logo: React.FC<LogoProps> = ({ alwaysFull = false }) => {
     return (
         <>
             {/* Full logo for larger screens */}
-            <div className="hidden sm:block">
+            <div className="hidden sm:block max-w-[120px]">
                 <Image
                     src={'/images/brand/logoTransparent.png'}
                     alt="Rawura Logo"
@@ -34,7 +34,7 @@ const Logo: React.FC<LogoProps> = ({ alwaysFull = false }) => {
             </div>
 
             {/* Mini logo for mobile screens */}
-            <div className="block sm:hidden">
+            <div className="block sm:hidden max-w-[50px]">
                 <Image
                     src={'/images/brand/logoMiniLight.png'}
                     alt="Rawura"
