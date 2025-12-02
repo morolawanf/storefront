@@ -6,13 +6,13 @@ export const siteConfig = {
   defaultTitle: 'Rawura - Affordable Quality Products',
   description: 'Rawura Online Store - Your One-Stop Shop for Affordable Quality Products',
   url: MAIN_SITE_URL,
-  ogImage: `${MAIN_SITE_URL}/images/brand/ogimage.png`,
+  ogImage: '/images/brand/ogimage.png',
   logo: {
-    light: `${MAIN_SITE_URL}/images/brand/logoLight.png`,
-    dark: `${MAIN_SITE_URL}/images/brand/logoDark.png`,
-    transparent: `${MAIN_SITE_URL}/images/brand/logoTransparent.png`,
-    miniLight: `${MAIN_SITE_URL}/images/brand/logoMiniLight.png`,
-    miniDark: `${MAIN_SITE_URL}/images/brand/logoMiniDark.png`,
+    light: '/images/brand/logoLight.png',
+    dark: '/images/brand/logoDark.png',
+    transparent: '/images/brand/logoTransparent.png',
+    miniLight: '/images/brand/logoMiniLight.png',
+    miniDark: '/images/brand/logoMiniDark.png',
   },
   twitter: '@rawura',
   locale: 'en_NG',
@@ -22,7 +22,6 @@ export const siteConfig = {
 
 export type SiteConfig = typeof siteConfig;
 
-// Helper function to prefetch images
 export async function prefetchImages(imageUrls: string[]) {
   if (imageUrls.length === 0) return;
 
