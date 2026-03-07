@@ -371,7 +371,7 @@ const ModalQuickview = () => {
                                                 src={getCdnUrl(item.url)}
                                                 alt={product.name}
                                                 effect="blur"
-                                                placeholderSrc={`${getCdnUrl(item.url)}?class=minify`}
+                                                placeholderSrc={`${getCdnUrl(item.url)}`}
                                                 className='w-auto h-full object-cover'
                                             />
                                         </div>
@@ -438,7 +438,7 @@ const ModalQuickview = () => {
                                                             alt={product.name}
                                                             className="w-full h-full object-cover select-none"
                                                             effect="blur"
-                                                            placeholderSrc={`${getCdnUrl(item.url)}?class=minify`}
+                                                            placeholderSrc={`${getCdnUrl(item.url)}`}
                                                         />
                                                     </div>
                                                 </SwiperSlide>

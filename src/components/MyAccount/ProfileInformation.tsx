@@ -108,8 +108,13 @@ export default function ProfileInformation() {
         // Upload image if a file is selected
         if (selectedFile) {
           try {
-            const uploadedPath = await uploadImage(selectedFile, 'user');
-            updatedValues.image = uploadedPath;
+            const uploadResult = await uploadImage(selectedFile, 'user');
+            updatedValues.image = uploadResult.path;
+            // Show warning if optimization failed
+            if (uploadResult.warning) {
+              console.warn('Image optimization warning:', uploadResult.warning);
+              // Optional: Show toast notification for warning
+            }
           } catch (uploadError) {
             const message = uploadError instanceof Error ? uploadError.message : 'Failed to upload image';
             setErrorMessage(message);
@@ -175,7 +180,7 @@ export default function ProfileInformation() {
             <div className="bg_img flex-shrink-0 relative w-[7.5rem] h-[7.5rem] rounded-lg overflow-hidden bg-surface">
               <span className="ph ph-image text-5xl absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-secondary"></span>
               <Image
-                src={imagePreview || getCdnUrl(userProfile?.image) || '/images/avatar/1.png'}
+                src={imagePreview || getCdnUrl(userProfile?.image, 'mini') || '/images/avatar/1.png'}
                 width={300}
                 height={300}
                 alt="avatar"

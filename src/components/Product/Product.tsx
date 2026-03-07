@@ -401,7 +401,6 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
         return now >= start && now <= end;
     }, [data.sale]);
 
-
     return (
         <>
             {type === "grid" ? (
@@ -455,7 +454,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                             <Link href={`/product/${data.slug}`} prefetch className="product-img w-full h-full aspect-[3/4] block">
                                 <Image
                                     effect={'blur'}
-                                    placeholderSrc={`${getProductImageCdnUrl(rawData)}?class=minify`}
+                                    placeholderSrc={`${getProductImageCdnUrl(rawData)}`}
                                     src={getProductImageCdnUrl(rawData)}
                                     alt={data.name}
                                     wrapperProps={

@@ -5,29 +5,47 @@ interface UploadResponse {
   message: string;
   data: {
     path: string;
+    miniPath: string;
     url?: string;
+    miniUrl?: string;
     size: number;
     mimetype: string;
     originalName: string;
+    warning?: string; // Present if optimization failed
   };
 }
 
+interface UploadResult {
+  path: string;
+  miniPath: string;
+  warning?: string;
+}
+
 /**
- * Upload an image file to the backend
- * @param file - The image file to upload
+ * Upload an image or video file to the backend
+ * @param file - The file to upload (image or video)
  * @param category - The upload category (default: 'user')
- * @returns The uploaded file path (relative path for storage in DB)
+ * @returns Object with path, miniPath, and optional warning
  */
-export async function uploadImage(file: File, category: string = 'user'): Promise<string> {
+export async function uploadImage(file: File, category: string = 'user'): Promise<UploadResult> {
+  const isImage = file.type.startsWith('image/');
+  const isVideo = file.type.startsWith('video/');
+
   // Validate file type
-  if (!file.type.startsWith('image/')) {
-    throw new Error('Only image files are allowed');
+  if (!isImage && !isVideo) {
+    throw new Error('Only image and video files are allowed');
   }
 
-  // Validate file size (10MB max, matching backend limit)
-  const maxSize = 10 * 1024 * 1024; // 10MB
-  if (file.size > maxSize) {
+  // Validate file size based on type
+  const imageMaxSize = 10 * 1024 * 1024; // 10MB
+  const videoMaxSize = 50 * 1024 * 1024; // 50MB
+  
+  if (isImage && file.size > imageMaxSize) {
     throw new Error('Image size must be less than 10MB');
+  }
+  
+  if (isVideo && file.size > videoMaxSize) {
+    throw new Error('Video size must be less than 50MB');
   }
 
   // Create FormData
@@ -47,17 +65,35 @@ export async function uploadImage(file: File, category: string = 'user'): Promis
       }
     );
 
-    // Return the path from response
+    // Validate response
     if (!response.data.data?.path) {
       throw new Error('Upload failed: No path returned from server');
     }
 
-    return response.data.data.path;
+    const result: UploadResult = {
+      path: response.data.data.path,
+      miniPath: response.data.data.miniPath,
+      warning: response.data.data.warning,
+    };
+
+    // Show warning if optimization failed (optional - can be handled by component)
+    if (result.warning) {
+      console.warn('Upload warning:', result.warning);
+      // You can add toast notification here if you have a toast system
+      // Example: toast.warning(result.warning);
+    }
+
+    return result;
   } catch (error) {
     // Re-throw with user-friendly message
     if (error instanceof Error) {
       throw error;
     }
-    throw new Error('Failed to upload image');
+    throw new Error('Failed to upload file');
   }
 }
+
+/**
+ * Alias for uploadImage with clearer naming for media files
+ */
+export const uploadMedia = uploadImage;
