@@ -146,7 +146,6 @@ export default function SearchResultClient({ searchQuery }: SearchResultClientPr
 
     const products = productsData?.data;
     const meta = productsData?.meta;
-    console.log({ meta });
 
     // Handlers
     const handleLayoutClick = (layout: LayoutType) => setLayoutCol(layout);

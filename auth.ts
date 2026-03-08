@@ -169,8 +169,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.emailVerified = result.data.emailVerified
               ? new Date(result.data.emailVerified)
               : new Date();
-
-            console.log('JWT callback - token set to:', result.data.token);
           }
         } catch (error) {
           throw new AuthenticationFailedError('Something went wrong authenticating jwt');

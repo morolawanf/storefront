@@ -6,7 +6,6 @@ import { Address, AddressesResponse } from '@/types/user';
 // Fetch all user addresses
 const fetchAddresses = async (): Promise<Address[]> => {
   const response = await apiClient.get<AddressesResponse>(api.user.addresses);
-console.log(response);
 
   if (!response.data) {
     throw new Error('Failed to fetch addresses');
@@ -21,9 +20,9 @@ export const useAddresses = (): UseQueryResult<Address[], Error> => {
     queryKey: ['user', 'addresses'],
     queryFn: fetchAddresses,
     staleTime: 1000 * 60 * 5, // 5 minutes
-        refetchOnWindowFocus: false, 
-    refetchOnMount: false,      
-    refetchOnReconnect: true, 
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: true,
   });
 };
 
