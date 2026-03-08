@@ -453,6 +453,8 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                             </div>
                             <Link href={`/product/${data.slug}`} prefetch className="product-img w-full h-full aspect-[3/4] block">
                                 <Image
+                                    fetchPriority='high'
+                                    loading='eager'
                                     effect={'blur'}
                                     placeholderSrc={`${getProductImageCdnUrl(rawData)}`}
                                     src={getProductImageCdnUrl(rawData)}

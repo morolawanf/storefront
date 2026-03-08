@@ -8,7 +8,7 @@ const CDN_BASE_URL = 'https://oeptest.b-cdn.net/';
 /**
  * Image variant type
  */
-export type ImageVariant = 'base' | 'mini';
+export type ImageVariant = 'base' | 'mini' | 'png';
 
 /**
  * Constructs full CDN URL from a relative path
@@ -25,6 +25,9 @@ export function getCdnUrl(path: string | undefined | null, variant: ImageVariant
     if (variant === 'mini' && !path.includes('-mini.')) {
       return convertToMiniUrl(path);
     }
+    if (variant === 'png') {
+      return convertToPngUrl(path);
+    }
     return path;
   }
   
@@ -34,6 +37,11 @@ export function getCdnUrl(path: string | undefined | null, variant: ImageVariant
   // For mini variant, convert path to mini version
   if (variant === 'mini' && !cleanPath.includes('-mini.')) {
     cleanPath = convertToMiniPath(cleanPath);
+  }
+  
+  // For png variant, convert path to png version
+  if (variant === 'png') {
+    cleanPath = convertToPngPath(cleanPath);
   }
   
   // Construct full CDN URL
@@ -66,6 +74,28 @@ function convertToMiniUrl(url: string): string {
   const baseUrl = url.substring(0, lastDotIndex);
   const extension = url.substring(lastDotIndex);
   return `${baseUrl}-mini${extension}`;
+}
+
+/**
+ * Convert a base path to png path
+ * @param path - Base path (e.g., "products/uuid-timestamp.webp")
+ * @returns PNG path (e.g., "products/uuid-timestamp.png")
+ */
+function convertToPngPath(path: string): string {
+  const lastDotIndex = path.lastIndexOf('.');
+  if (lastDotIndex === -1) return `${path}.png`;
+  return `${path.substring(0, lastDotIndex)}.png`;
+}
+
+/**
+ * Convert a base URL to png URL
+ * @param url - Base URL
+ * @returns PNG URL
+ */
+function convertToPngUrl(url: string): string {
+  const lastDotIndex = url.lastIndexOf('.');
+  if (lastDotIndex === -1) return `${url}.png`;
+  return `${url.substring(0, lastDotIndex)}.png`;
 }
 
 /**

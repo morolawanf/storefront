@@ -6,8 +6,10 @@ interface UploadResponse {
   data: {
     path: string;
     miniPath: string;
+    pngPath: string;
     url?: string;
     miniUrl?: string;
+    pngUrl?: string;
     size: number;
     mimetype: string;
     originalName: string;
@@ -18,6 +20,7 @@ interface UploadResponse {
 interface UploadResult {
   path: string;
   miniPath: string;
+  pngPath: string;
   warning?: string;
 }
 
@@ -39,11 +42,11 @@ export async function uploadImage(file: File, category: string = 'user'): Promis
   // Validate file size based on type
   const imageMaxSize = 10 * 1024 * 1024; // 10MB
   const videoMaxSize = 50 * 1024 * 1024; // 50MB
-  
+
   if (isImage && file.size > imageMaxSize) {
     throw new Error('Image size must be less than 10MB');
   }
-  
+
   if (isVideo && file.size > videoMaxSize) {
     throw new Error('Video size must be less than 50MB');
   }
@@ -73,6 +76,7 @@ export async function uploadImage(file: File, category: string = 'user'): Promis
     const result: UploadResult = {
       path: response.data.data.path,
       miniPath: response.data.data.miniPath,
+      pngPath: response.data.data.pngPath,
       warning: response.data.data.warning,
     };
 

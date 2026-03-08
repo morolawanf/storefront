@@ -10,6 +10,7 @@ import MainProduct from '@/components/Product/Detail/MainProduct';
 import Footer from '@/components/Footer/Footer';
 import BreadcrumbProduct from '@/components/Breadcrumb/BreadcrumbProduct';
 import type { ProductDetail } from '@/hooks/queries/useProduct';
+import { headers } from 'next/headers';
 import removeMarkdown from "markdown-to-text";
 import { getProductDisplayPrice } from '@/utils/cart-pricing';
 import { formatToNaira } from '@/utils/currencyFormatter';
@@ -60,13 +61,26 @@ export async function generateMetadata({ params }: ProductPageProps) {
         };
     }
 
-    // Calculate discount percentage if available
-    const { discountPercentage } = getProductDisplayPrice(product);
+    // Calculate discount — prefer active sale, fall back to static originPrice discount
+    const { discountPercentage: saleDiscount } = getProductDisplayPrice(product);
+    const hasStaticDiscount = product.originPrice > 0 && product.originPrice > product.price;
+    const staticDiscountPct = hasStaticDiscount
+        ? Math.round(((product.originPrice - product.price) / product.originPrice) * 100)
+        : 0;
+    const discountPercentage = saleDiscount > 0 ? saleDiscount : staticDiscountPct;
     const hasDiscount = discountPercentage > 0;
     const discount = hasDiscount ? discountPercentage : null;
 
+    // Determine the "original" price and final display price for copy + OG image
+    // - Sale discount: product.price is the base; final = base * (1 - pct/100)
+    // - Static discount: product.originPrice is the original; product.price is already final
+    const ogOriginalPrice = saleDiscount > 0 ? product.price : (hasStaticDiscount ? product.originPrice : product.price);
+    const finalDisplayPrice = saleDiscount > 0
+        ? product.price * (1 - saleDiscount / 100)
+        : product.price;
+
     const priceText = discount
-        ? `${formatToNaira(product.price * (1 - discount / 100))} (${discount}% off)`
+        ? `${formatToNaira(finalDisplayPrice)} (${discount}% off)`
         : `${formatToNaira(product.price)}`;
 
     const description = product.description
@@ -75,6 +89,27 @@ export async function generateMetadata({ params }: ProductPageProps) {
 
     const imageUrls = product.description_images?.map(img => getCdnUrl(img.url)) || [];
     await prefetchImages(imageUrls);
+
+    // Build dynamic OG image URL
+    const headersList = await headers();
+    const host = headersList.get('host') || 'localhost:3009';
+    const protocol = headersList.get('x-forwarded-proto') || 'http';
+    const origin = `${protocol}://${host}`;
+
+    const coverImage = product.description_images?.find(img => img.cover_image)
+        || product.description_images?.[0];
+    const ogImageSrc = coverImage ? getCdnUrl(coverImage.url) : '';
+
+    const ogParams = new URLSearchParams({
+        name: product.name,
+        price: ogOriginalPrice.toString(), // original price so OG route shows correct strikethrough
+        ...(ogImageSrc && { image: ogImageSrc }),
+        ...(discountPercentage > 0 && { discount: discountPercentage.toString() }),
+        ...(description && { description }),
+        ...(product.category?.name && { category: product.category.name }),
+    });
+
+    const ogImageUrl = `${origin}/api/og?${ogParams.toString()}`;
 
     return {
         title: `${product.name}`,
@@ -88,23 +123,21 @@ export async function generateMetadata({ params }: ProductPageProps) {
             title: product.name,
             description: description,
             type: 'website',
-            images: product.description_images?.length
-                ? product.description_images.map(img => ({
-                    url: getCdnUrl(img.url),
+            images: [
+                {
+                    url: ogImageUrl,
                     alt: product.name,
                     width: 1200,
                     height: 630,
-                }))
-                : [],
+                },
+            ],
             siteName: 'Rawura',
         },
         twitter: {
             card: 'summary_large_image',
             title: product.name,
             description: description,
-            images: product.description_images?.[0]?.url
-                ? [getCdnUrl(product.description_images[0].url)]
-                : [],
+            images: [ogImageUrl],
         },
         alternates: {
             canonical: `/product/${slug}`,
