@@ -29,11 +29,11 @@ import {
     shouldShowSaleProgress
 } from '@/utils/calculateSale';
 import { ProductVariant, ProductVariantChild } from '@/types/product';
-import { CheckCircleIcon } from '@phosphor-icons/react';
 import { useSession } from 'next-auth/react';
-import { formatToNaira } from '@/utils/currencyFormatter';
 import { LazyLoadImage as Image } from 'react-lazy-load-image-component';
-import Countdown from './Countdown'; // Import Countdown component
+import ProductSalesLeft from './ProductSalesLeft';
+import ProductNameColors from './ProductNameColors';
+import ProductPriceBlock from './ProductPriceBlock';
 
 // Cart context already imported correctly at top
 
@@ -81,7 +81,13 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                 sizes: [], // handled via attributes
                 variation: [], // handled via attributes
                 description: '', // not in ProductListItem
-                description_images: [], // not in ProductListItem
+                description_images: rawData.description_images || rawData.images || [],
+                // Required shipping fields on Product type
+                weight: 0,
+                height: 0,
+                width: 0,
+                length: 0,
+                isVolumetric: false,
                 action: 'add to cart',
                 createdAt: '', // not in ProductListItem
                 reviewStats: {
@@ -454,6 +460,7 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                                 <Image
                                     fetchPriority='high'
                                     loading='eager'
+                                    threshold={20}
                                     effect={'blur'}
                                     placeholderSrc={`${getProductImageCdnUrl(rawData)}`}
                                     src={getProductImageCdnUrl(rawData)}
@@ -601,71 +608,36 @@ const Product: React.FC<ProductProps> = ({ data: rawData, type }) => {
                             </div>
                         </div>
                         <div className="product-infor mt-4 lg:mb-7">
-                            {showSaleProgress && (
-                                <div className="product-sold pb-2">
-                                    <div className="progress bg-line h-[3px] md:h-[5px] w-full rounded-full overflow-hidden relative">
-                                        <div
-                                            className={`progress-sold bg-red absolute left-0 top-0 h-full`}
-                                            style={{ width: `${percentSold}%` }}
-                                        >
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between gap-3 gap-y-1 flex-wrap mt-1">
-                                        <div className="text-button-uppercase hidden xxs:block">
-                                            <span className='text-secondary2 text-sm lg:text-base font-medium'>Sold: </span>
-                                            <span className='text-sm lg:text-base'>{soldQuantity}</span>
-                                        </div>
-                                        <div className="text-button-uppercase">
-                                            <span className='text-secondary2 text-sm lg:text-base font-medium'>Available: </span>
-                                            <span className='text-sm lg:text-base'>{availableStock}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
-                            {showFlashSaleCountdown && data.sale?.endDate && (
-                                <Countdown endDate={data.sale.endDate} />
-                            )}
+                            <ProductNameColors
+                                nameColorsUi={{
+                                    slug: data.slug,
+                                    name: data.name,
+                                    colors,
+                                    activeColor,
+                                    onColorSelect: handleActiveColor,
+                                }}
+                            />
+                            <ProductPriceBlock
+                                priceUi={{
+                                    hasActiveSale: saleInfo.hasActiveSale,
+                                    discountedPrice: saleInfo.discountedPrice,
+                                    originalPrice: saleInfo.originalPrice,
+                                    percentOff: saleInfo.percentOff,
+                                    basePrice: data.price,
+                                }}
+                            />
+                            <ProductSalesLeft
+                                saleUi={{
+                                    showSaleProgress,
+                                    percentSold,
+                                    availableStock,
+                                    soldQuantity,
+                                    showFlashSaleCountdown,
+                                    saleEndDate: data.sale?.endDate,
+                                }}
+                            />
 
-                            <div className='w-full relative '>
-                                <Link href={`/product/${data.slug}`} prefetch className="product-name text-title duration-300 hover-underline-animation cursor-pointer">{data.name}</Link>
-                                {colors.length > 0 && (
-                                    <div className="list-color py-2 max-md:hidden flex items-center gap-3 flex-wrap duration-500">
-                                        {colors.map((item, index) => (
-                                            <div
-                                                key={index}
-                                                className={`color-item rounded-full duration-300 relative w-7 h-7  ${activeColor === item.value ? 'active' : 'outline outline-[0.6px] outline-gray-200'}`}
-                                                style={{ backgroundColor: item.hex }}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleActiveColor(item.value);
-                                                }}>
-                                                {activeColor === item.value ?
-                                                    <>
-                                                        <CheckCircleIcon className="text-gray-300 w-4 h-4 absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-                                                    </> : null
-                                                }
-                                                <div className="tag-action bg-black text-white caption2 capitalize px-1.5 py-0.5 rounded-sm">{item.label}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-
-                            <div className="product-price-block flex items-center gap-2 flex-wrap mt-0.5 duration-300 relative z-[1]">
-                                {saleInfo.hasActiveSale ? (
-                                    <>
-                                        <div className="product-price text-title">{formatToNaira(saleInfo.discountedPrice)}</div>
-                                        <div className="product-origin-price caption1 text-secondary2"><del>{formatToNaira(saleInfo.originalPrice)}</del></div>
-                                        <div className="product-sale text-xs lg:text-sm font-medium bg-green px-1.5 md:px-2 py-0.5 inline-block rounded-full">
-                                            -{saleInfo.percentOff}%
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="product-price text-title">{formatToNaira(data.price)}</div>
-                                )}
-                            </div>
                         </div>
                     </div>
                 </div>

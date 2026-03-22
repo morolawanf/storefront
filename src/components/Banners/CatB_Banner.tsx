@@ -16,14 +16,14 @@ const CatB_Banner = () => {
         <>
             <div className="banner-block md:pt-20 pt-10">
                 <div className="container">
-                    <div className={`list-banner grid ${CAT_B_Banners.length <= 2 ? 'md:grid-cols-2 ' : 'lg:grid-cols-3 md:grid-cols-2 '} lg:gap-[30px] gap-[20px]`}>
+                    <div className={`list-banner grid ${CAT_B_Banners.length <= 2 ? 'md:grid-cols-2 ' : 'lg:grid-cols-3 md:grid-cols-2 '} gap-[10px]`}>
                         {CAT_B_Banners.map((banner, index) => (
                             <Link
                                 key={banner._id || index}
                                 href={banner.pageLink || '/shop/breadcrumb-img'}
                                 className={`banner-item relative block duration-500 ${index === 2 ? 'max-lg:hidden' : ''}`}
                             >
-                                <div className="banner-img w-full rounded-2xl overflow-hidden">
+                                <div className="banner-img w-full rounded-lg overflow-hidden">
                                     <Image
                                         src={getCdnUrl(banner.imageUrl)}
                                         width={600}

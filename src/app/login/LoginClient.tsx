@@ -26,8 +26,8 @@ export default function LoginClient({ onLoginSuccess, redirectPath, pageHeader =
   }, [searchParams]);
 
   return (
-    <div className="content-main flex gap-y-8 ">
-      <div className="  w-full max-w-xl mx-auto">
+    <div className="content-main flex gap-y-8 w-full ">
+      <div className="  w-full max-w-xl mx-auto border border-gray-50 p-6 shadow-sm rounded-2xl">
         {showResetSuccess && (
           <div className="p-4 mb-6 bg-green-100 border border-green-400 text-green-700 rounded-lg">
             <p className="text-sm font-semibold">

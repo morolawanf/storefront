@@ -56,7 +56,7 @@ export interface FlashSaleApplied {
 }
 
 export type OrderStatus = 'Pending' | 'Processing' | 'Cancelled' | 'Completed' | 'Failed';
-export type DeliveryType = 'shipping' | 'pickup';
+export type DeliveryType = 'shipping' | 'pickup' | 'gig';
 
 export interface OrderType {
   _id: string;
@@ -141,6 +141,7 @@ export interface EnrichedOrder {
   status: OrderStatus;
   isPaid: boolean;
   deliveryType: DeliveryType;
+  gigWaybill?: string | null;
   deliveryStatus?: string;
   createdAt: string | Date;
   updatedAt: string | Date;

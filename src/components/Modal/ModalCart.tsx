@@ -13,6 +13,7 @@ import { calculateCartItemPricing } from '@/utils/cart-pricing';
 import { getCdnUrl } from '@/libs/cdn-url';
 import { TrashIcon } from '@phosphor-icons/react';
 import { formatToNaira } from '@/utils/currencyFormatter';
+import { useFreeShippingThreshold } from '@/hooks/useFreeShippingThreshold';
 
 const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType; }) => {
     /*
@@ -41,6 +42,7 @@ const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType; }) =
 
     const [activeTab, setActiveTab] = useState<string | undefined>('');
     const { isModalOpen, closeModalCart } = useModalCartContext();
+    const { freeShippingThreshold } = useFreeShippingThreshold();
 
     // Use CartContext for cart state
     const { items: cartItems, removeItem, itemCount: cartCount } = useCart();
@@ -109,8 +111,6 @@ const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType; }) =
         setActiveTab(tab);
     };
 
-    let moneyForFreeship = 150;
-
     // Calculate total from cart items with render-time pricing
     const totalCart = React.useMemo(() => {
         return cartItems.reduce((sum, item) => {
@@ -118,6 +118,18 @@ const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType; }) =
             return sum + pricing.totalPrice;
         }, 0);
     }, [cartItems]);
+
+    const freeShippingEnabled =
+        Number.isFinite(freeShippingThreshold) && freeShippingThreshold !== null;
+    const normalizedThreshold = freeShippingEnabled ? Number(freeShippingThreshold) : 0;
+    const freeShippingRemaining = freeShippingEnabled ? Math.max(normalizedThreshold - totalCart, 0) : 0;
+    const freeShippingProgress =
+        freeShippingEnabled && normalizedThreshold > 0
+            ? Math.min((totalCart / normalizedThreshold) * 100, 100)
+            : freeShippingEnabled
+                ? 100
+                : 0;
+    const hasQualifiedForFreeShipping = freeShippingEnabled && freeShippingRemaining === 0;
 
     return (
         <>
@@ -137,17 +149,28 @@ const ModalCart = ({ serverTimeLeft }: { serverTimeLeft: CountdownTimeType; }) =
                                 <Icon.X size={14} />
                             </div>
                         </div>
-                        <div className="heading banner mt-3 px-6">
-                            <div className="text">Buy <span className="text-button"> $<span className="more-price">{moneyForFreeship - totalCart > 0 ? (moneyForFreeship - totalCart) : 0}</span>.00 </span>
-                                <span>more to get </span>
-                                <span className="text-button">freeship</span></div>
-                            <div className="tow-bar-block mt-3">
-                                <div
-                                    className="progress-line"
-                                    style={{ width: totalCart <= moneyForFreeship ? `${(totalCart / moneyForFreeship) * 100}%` : `100%` }}
-                                ></div>
+                        {freeShippingEnabled ? (
+                            <div className="heading banner mt-3 px-6">
+                                <div className="text">
+                                    {hasQualifiedForFreeShipping ? (
+                                        <>
+                                            You qualified for <span className="text-button">Free shipping</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            Buy <span className="text-button">{formatToNaira(freeShippingRemaining)}</span> more to get{' '}
+                                            <span className="text-button">Free shipping</span>
+                                        </>
+                                    )}
+                                </div>
+                                <div className="tow-bar-block mt-3">
+                                    <div
+                                        className="progress-line"
+                                        style={{ width: `${freeShippingProgress}%` }}
+                                    ></div>
+                                </div>
                             </div>
-                        </div>
+                        ) : null}
                         <div className='flex flex-col h-[91%]'>
                             <div className="list-product px-6 !max-h-none flex-1">
                                 {cartItems.length === 0 ? (

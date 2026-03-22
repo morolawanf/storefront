@@ -171,6 +171,14 @@ export const api = {
     get: '/settings',
   },
 
+  // GIG Logistics endpoints
+  gig: {
+    config: '/gig/config',
+    calculateShipping: '/gig/calculate-shipping',
+    stations: '/gig/stations',
+    track: (waybill: string) => `/gig/track/${encodeURIComponent(waybill)}`,
+  },
+
   // Sitemap endpoints
   sitemap: {
     products: '/sitemap/products',

@@ -62,6 +62,15 @@ export interface ProductShipping {
   addedDays: number;
 }
 
+/** GIG Logistics shipping dimensions */
+export interface ProductShippingDimensions {
+  weight: number;
+  height: number;
+  width: number;
+  length: number;
+  isVolumetric: boolean;
+}
+
 export interface SaleVariant {
   attributeName?: string | null;
   attributeValue?: string | null;
@@ -98,10 +107,10 @@ export interface Product {
   lowStockThreshold?: number;
   description?: string;
   tags?: string[];
-  reviewStats:{
+  reviewStats: {
     averageRating: number;
-    totalReviews:number;
-  }
+    totalReviews: number;
+  };
   attributes?: ProductVariant[]; // Updated to match backend structure
   specifications?: ProductSpecification[];
   category?: ProductCategory;
@@ -110,6 +119,12 @@ export interface Product {
   pricingTiers?: ProductPricingTier[];
   packSizes?: ProductPackSize[]; // NEW: Pack sizes for bulk/wholesale products
   shipping?: ProductShipping;
+  // GIG shipping fields
+  weight: number;
+  height: number;
+  width: number;
+  length: number;
+  isVolumetric: boolean;
   rating?: number;
   rate?: number; // Alias for rating
   status?: 'active' | 'inactive' | 'archived';

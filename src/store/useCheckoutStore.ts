@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type ShippingMethodType = 'pickup' | 'normal' | 'express';
+export type ShippingMethodType = 'pickup' | 'normal' | 'express' | 'gig';
 
 interface DiscountInfo {
   amount: number;

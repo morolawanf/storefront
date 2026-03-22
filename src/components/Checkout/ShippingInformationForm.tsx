@@ -17,6 +17,8 @@ type ShippingFormState = {
     city: string;
     streetAddress: string;
     postalCode: string;
+    latitude?: number;
+    longitude?: number;
 };
 
 interface ShippingInformationFormProps {

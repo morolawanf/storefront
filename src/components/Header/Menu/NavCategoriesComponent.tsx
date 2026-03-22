@@ -26,40 +26,46 @@ const NavCategoriesComponent = ({ isOpen }: NavCategoriesComponentProps) => {
     const [showNavCategories, setShowNavCategories] = useState(false);
     const hideCategoryPanel = () => {
         if (!showFixedCategories) {
-            setShowNavCategories(false)
+            setShowNavCategories(false);
         }
         setIsCategoryExpanded(false);
         setHoveredCategory(CATEGORIES[0]);
-    }
+    };
     const hideCategoryPanelSecondary = () => {
         if (showFixedCategories) {
-            setShowNavCategories(false)
+            setShowNavCategories(false);
         }
-    }
+    };
     const toggleNavCategories = () => {
         setShowNavCategories((prev) => !prev);
-        setIsCategoryExpanded(true)
-    }
+        setIsCategoryExpanded(true);
+    };
 
     const showCategoryAndExpand = () => {
         if (!showFixedCategories) {
-            setShowNavCategories(true)
+            setShowNavCategories(true);
         }
-        setIsCategoryExpanded(true)
-    }
+        setIsCategoryExpanded(true);
+    };
     return (
         <div className="menu-department-block h-full">
             <div
                 onClick={toggleNavCategories}
-                onMouseOver={() => setIsCategoryExpanded(true)}
+                onMouseOver={toggleNavCategories}
                 onMouseLeave={hideCategoryPanel}
-                className="menu-department-btn relative flex h-full min-w-[235px] flex-1 cursor-pointer items-center gap-4 bg-black px-4 sm:gap-16">
-                <Link href={'/category'} className="text-button-uppercase whitespace-nowrap text-white hover:underline">All Categories</Link>
+                className="menu-department-btn relative flex h-full min-w-[235px] flex-1 cursor-pointer items-center bg-black px-2.5 gap-1.5 group">
+                <Link
+                    onClick={toggleNavCategories}
+                    onMouseOver={toggleNavCategories}
+
+                    href={'/category'} className="text-button-uppercase whitespace-nowrap text-white hover:underline">All Categories</Link>
+
+                <CaretDownIcon size={14} className="pointer-events-none text-white group-hover:rotate-180 transition-all duration-300 " />
             </div>
             <div
                 onMouseOver={showCategoryAndExpand}
                 onMouseLeave={hideCategoryPanel}
-                className={`sub-menu-department absolute left-0 top-[43px] h-max rounded-b-2xl bg-white transition-all duration-200 ${showFixedCategories ? 'open' : ''} ${showNavCategories ? 'open' : ''} ${isCategoryExpanded
+                className={`sub-menu-department absolute left-0 top-[43px] h-max rounded-b-2xl bg-white transition-all duration-50 ${showFixedCategories ? 'open' : ''} ${showNavCategories ? 'open' : ''} ${isCategoryExpanded
                     ? 'w-full border border-line border-t-0 max-h-[70vh] overflow-hidden'
                     : 'w-[235px]'
                     }`}
@@ -88,7 +94,7 @@ const NavCategoriesComponent = ({ isOpen }: NavCategoriesComponentProps) => {
                         {!isCategoryExpanded && (
                             <div className="item block absolute bottom-0 left-0 w-full bg-transparent h-fit">
                                 <div className="whitespace-nowrap pr-4 pt-1.5 duration-300 flex items-center gap-2 text-lime-700">
-                                    <span>All Categories</span>
+                                    <span>more...</span>
                                     <CaretDownIcon size={20} className="" />
                                 </div>
                             </div>

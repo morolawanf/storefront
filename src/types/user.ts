@@ -13,6 +13,8 @@ export interface Address {
   lga: string;
   country: string;
   active: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface AddAddressInput {
@@ -27,6 +29,8 @@ export interface AddAddressInput {
   lga: string;
   country: string;
   active?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface UpdateAddressInput {
@@ -41,6 +45,8 @@ export interface UpdateAddressInput {
   lga?: string;
   country?: string;
   active?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface UserProfile {

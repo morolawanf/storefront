@@ -337,7 +337,7 @@ input[type='file'] {
     line-height: 16px;
     letter-spacing: 1.1px;
   }
-    .text-sub-display2 {
+  .text-sub-display2 {
     font-size: 12px;
     line-height: 16px;
     letter-spacing: 1.1px;
@@ -434,4 +434,8 @@ input[type='file'] {
 }
 .hover-underline-animation:hover {
   background-size: 100% 2px; /* expand underline to full width */
+}
+
+.site_max_width {
+  max-width: 1370px !important;
 }

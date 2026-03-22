@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import * as Icon from '@phosphor-icons/react/dist/ssr';
 import { AddAddressInput } from '@/types/user';
 import { useAllShippingConfig } from '@/hooks/useLogisticsLocations';
+
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
 
 const emptyAddress: AddAddressInput = {
   firstName: '',
@@ -17,6 +19,8 @@ const emptyAddress: AddAddressInput = {
   lga: '',
   country: '',
   active: false,
+  latitude: undefined,
+  longitude: undefined,
 };
 
 interface AddressFormProps {
@@ -28,9 +32,98 @@ export default function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
   const [formData, setFormData] = useState<AddAddressInput>(emptyAddress);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
 
   // Fetch shipping configurations for logistics dropdowns
   const { data: shippingConfigs, isLoading: isLoadingShippingConfigs } = useAllShippingConfig();
+
+  // Load Google Maps script
+  useEffect(() => {
+    if (!GOOGLE_MAPS_API_KEY) return;
+    if (typeof window !== 'undefined' && window.google?.maps?.places) return;
+
+    const existing = document.querySelector('script[src*="maps.googleapis.com/maps/api/js"]');
+    if (existing) return;
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => initAutocomplete();
+    document.head.appendChild(script);
+
+    return () => {
+      // Cleanup not needed for global script
+    };
+  }, []);
+
+  const initAutocomplete = useCallback(() => {
+    if (!addressInputRef.current || !window.google?.maps?.places) return;
+    if (autocompleteRef.current) return;
+
+    autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
+      types: ['address'],
+      componentRestrictions: { country: 'ng' },
+      fields: ['geometry', 'formatted_address', 'address_components'],
+    });
+
+    autocompleteRef.current.addListener('place_changed', () => {
+      const place = autocompleteRef.current?.getPlace();
+      if (!place?.geometry?.location) return;
+
+      const lat = place.geometry.location.lat();
+      const lng = place.geometry.location.lng();
+
+      // Extract address components
+      const components = place.address_components || [];
+      let city = '';
+      let state = '';
+      let zipCode = '';
+      let streetNumber = '';
+      let route = '';
+
+      for (const component of components) {
+        const types = component.types;
+        if (types.includes('street_number')) streetNumber = component.long_name;
+        if (types.includes('route')) route = component.long_name;
+        if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+          city = city || component.long_name;
+        }
+        if (types.includes('administrative_area_level_1')) state = component.long_name;
+        if (types.includes('postal_code')) zipCode = component.long_name;
+      }
+
+      const streetAddress = [streetNumber, route].filter(Boolean).join(' ') || place.formatted_address || '';
+
+      setFormData((prev) => ({
+        ...prev,
+        address1: streetAddress,
+        city: city || prev.city,
+        state: state || prev.state,
+        zipCode: zipCode || prev.zipCode,
+        latitude: lat,
+        longitude: lng,
+      }));
+
+      // Clear related errors
+      setFormErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.address1;
+        delete newErrors.city;
+        delete newErrors.state;
+        delete newErrors.zipCode;
+        return newErrors;
+      });
+    });
+  }, []);
+
+  // Init autocomplete when Google Maps is ready
+  useEffect(() => {
+    if (window.google?.maps?.places) {
+      initAutocomplete();
+    }
+  }, [initAutocomplete]);
 
   // Derive available states based on selected country
   const availableStates = useMemo(() => {
@@ -137,9 +230,8 @@ export default function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
               First Name <span className="text-red">*</span>
             </label>
             <input
-              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                formErrors.firstName ? 'border-red-600' : ''
-              }`}
+              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.firstName ? 'border-red-600' : ''
+                }`}
               id="firstName"
               type="text"
               value={formData.firstName}
@@ -156,9 +248,8 @@ export default function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
               Last Name <span className="text-red">*</span>
             </label>
             <input
-              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                formErrors.lastName ? 'border-red-600' : ''
-              }`}
+              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.lastName ? 'border-red-600' : ''
+                }`}
               id="lastName"
               type="text"
               value={formData.lastName}
@@ -175,9 +266,8 @@ export default function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
               Phone <span className="text-red">*</span>
             </label>
             <input
-              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                formErrors.phoneNumber ? 'border-red-600' : ''
-              }`}
+              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.phoneNumber ? 'border-red-600' : ''
+                }`}
               id="phone"
               type="tel"
               value={formData.phoneNumber}
@@ -195,9 +285,8 @@ export default function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
             </label>
             <div className="relative">
               <select
-                className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${
-                  formErrors.country ? 'border-red-600' : ''
-                } ${isLoadingShippingConfigs ? 'pr-10' : ''}`}
+                className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${formErrors.country ? 'border-red-600' : ''
+                  } ${isLoadingShippingConfigs ? 'pr-10' : ''}`}
                 id="country"
                 value={formData.country}
                 onChange={(e) => handleInputChange('country', e.target.value)}
@@ -219,22 +308,29 @@ export default function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
             )}
           </div>
 
-          {/* Address 1 */}
+          {/* Address 1 - Google Places Autocomplete */}
           <div className="sm:col-span-2">
             <label htmlFor="address1" className="caption1 capitalize">
               Street Address <span className="text-red">*</span>
             </label>
             <input
-              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                formErrors.address1 ? 'border-red-600' : ''
-              }`}
+              ref={addressInputRef}
+              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.address1 ? 'border-red-600' : ''
+                }`}
               id="address1"
               type="text"
+              placeholder={GOOGLE_MAPS_API_KEY ? 'Start typing your address...' : ''}
               value={formData.address1}
               onChange={(e) => handleInputChange('address1', e.target.value)}
             />
             {formErrors.address1 && (
               <div className="text-red text-xs mt-1">{formErrors.address1}</div>
+            )}
+            {GOOGLE_MAPS_API_KEY && formData.latitude && formData.longitude && (
+              <div className="text-green-600 text-xs mt-1 flex items-center gap-1">
+                <Icon.MapPin className="text-sm" />
+                Location verified ({formData.latitude.toFixed(4)}, {formData.longitude.toFixed(4)})
+              </div>
             )}
           </div>
 
@@ -258,9 +354,8 @@ export default function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
               Town / City <span className="text-red">*</span>
             </label>
             <input
-              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                formErrors.city ? 'border-red-600' : ''
-              }`}
+              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.city ? 'border-red-600' : ''
+                }`}
               id="city"
               type="text"
               value={formData.city}
@@ -275,9 +370,8 @@ export default function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
               State <span className="text-red">*</span>
             </label>
             <select
-              className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${
-                formErrors.state ? 'border-red-600' : ''
-              }`}
+              className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${formErrors.state ? 'border-red-600' : ''
+                }`}
               id="state"
               value={formData.state}
               onChange={(e) => handleInputChange('state', e.target.value)}
@@ -299,9 +393,8 @@ export default function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
               LGA <span className="text-red">*</span>
             </label>
             <select
-              className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${
-                formErrors.lga ? 'border-red-600' : ''
-              }`}
+              className={`border-line mt-2 px-4 py-3 w-full rounded-lg appearance-none ${formErrors.lga ? 'border-red-600' : ''
+                }`}
               id="lga"
               value={formData.lga}
               onChange={(e) => handleInputChange('lga', e.target.value)}
@@ -323,9 +416,8 @@ export default function AddressForm({ onSubmit, onCancel }: AddressFormProps) {
               ZIP Code <span className="text-red">*</span>
             </label>
             <input
-              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${
-                formErrors.zipCode ? 'border-red-600' : ''
-              }`}
+              className={`border-line mt-2 px-4 py-3 w-full rounded-lg ${formErrors.zipCode ? 'border-red-600' : ''
+                }`}
               id="zip"
               type="text"
               value={formData.zipCode}

@@ -21,7 +21,7 @@ export default function HomeClient() {
 
 
     return (
-        <>
+        <div className='site_max_width mx-auto'>
             {/* Deals of the Day Section - Featured at top with countdown */}
             {dealsOfTheDay && dealsOfTheDay.data.length > 0 && (
                 <ProductSection
@@ -74,6 +74,6 @@ export default function HomeClient() {
             )}
 
 
-        </>
+        </div>
     );
 }

@@ -20,11 +20,10 @@ export default async function LoginPage() {
   return (
     <>
       <div className="login-block md:py-20 py-10  border-y">
-        <div className="container">
+        <div className="container min-h-[70vh] flex justify-center items-center">
           <LoginClient />
         </div>
       </div>
-      <Footer />
     </>
   );
 }

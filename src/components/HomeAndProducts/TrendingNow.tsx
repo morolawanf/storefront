@@ -19,7 +19,7 @@ const TrendingNow = () => {
         return (
             <div className="trending-block style-nine md:pt-20 pt-10">
                 <div className="container">
-                    <div className="heading3 text-center">Trending Right Now</div>
+                    <div className="heading3 text-center">Top Categories</div>
                     <div className="text-center mt-6">Loading...</div>
                 </div>
             </div>
@@ -32,14 +32,15 @@ const TrendingNow = () => {
 
     return (
         <>
-            <div className="trending-block style-six md:pt-20 pt-10 my-10">
+            <div className="trending-block style-six md:pt-20 pt-10 my-10 site_max_width mx-auto">
                 <div className="container">
-                    <div className="heading3 text-center">Trending Right Now
+                    <div className="heading3 text-center">Top Categories
                     </div>
                     <div className="list-trending section-swiper-navigation style-small-border style-outline md:mt-10 mt-6">
                         <Swiper
                             spaceBetween={12}
                             autoplay={{
+                                pauseOnMouseEnter: true,
                                 delay: 8000,
                                 disableOnInteraction: true,
                             }}
@@ -59,9 +60,9 @@ const TrendingNow = () => {
                                 },
                                 992: {
                                     slidesPerView: 5,
-                                    spaceBetween: 20,
+                                    spaceBetween: 25,
                                 },
-                                1290: {
+                                1690: {
                                     slidesPerView: 6,
                                     spaceBetween: 30,
                                 },
@@ -84,7 +85,7 @@ const TrendingNow = () => {
                                             />
                                         </div>
                                         <div className="trending-name text-center mt-5 duration-500">
-                                            <span className='heading6 group-hover:underline font-medium'>{category.name}</span>
+                                            <span className='heading5 group-hover:underline font-medium'>{category.name}</span>
                                             {/* <span className='text-secondary'>{category.count}</span> */}
                                         </div>
                                     </Link>

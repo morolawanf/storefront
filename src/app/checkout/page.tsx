@@ -41,6 +41,8 @@ type ShippingFormState = {
     city: string;
     streetAddress: string;
     postalCode: string;
+    latitude?: number;
+    longitude?: number;
 };
 
 type ShippingCalculationResponse = {
@@ -59,6 +61,18 @@ type ShippingCalculationResponse = {
 
 type FlatCartShippingResponse = {
     amount: number;
+};
+
+type PublicGIGCheckoutConfig = {
+    enabledDeliveryMethods: Array<'shipping' | 'pickup' | 'gig'>;
+    shippingDiscountAmountOff: number;
+    gigDiscountAmountOff: number;
+    freeShippingThreshold: number | null;
+    shippingWindow: {
+        minDays: number;
+        maxDays: number;
+        label: string;
+    };
 };
 
 const EXPRESS_SURCHARGE_MULTIPLIER = 1.5;
@@ -110,8 +124,85 @@ const Checkout = () => {
     // Use Zustand store for checkout state
     const { shippingMethod: storedShippingMethod, discountInfo, setShippingMethod: setCheckoutShippingMethod } = useCheckoutStore();
     const { add: addPaymentReference, verify: verifyPaymentReference, clear: clearPaymentReference } = usePaymentStore();
-    const [currentShippingMethod, setCurrentShippingMethod] = React.useState<'pickup' | 'normal' | 'express'>(storedShippingMethod);
-    const shippingMethod = currentShippingMethod; // pickup, normal, express
+    const [currentShippingMethod, setCurrentShippingMethod] = React.useState<'pickup' | 'normal' | 'express' | 'gig'>(storedShippingMethod);
+    const [availableShippingMethods, setAvailableShippingMethods] = React.useState<Array<'pickup' | 'normal' | 'gig'>>(['pickup', 'normal', 'gig']);
+    const [shippingEtaLabel, setShippingEtaLabel] = React.useState<string>('2 - 5 days');
+    const shippingMethod = currentShippingMethod; // pickup, normal, express, gig
+
+    const isMethodAvailable = useCallback(
+        (method: 'pickup' | 'normal' | 'express' | 'gig') => {
+            if (method === 'express' || method === 'normal') {
+                return availableShippingMethods.includes('normal');
+            }
+
+            return availableShippingMethods.includes(method);
+        },
+        [availableShippingMethods]
+    );
+
+    React.useEffect(() => {
+        let isCancelled = false;
+
+        const loadDeliveryConfig = async () => {
+            try {
+                const response = await apiClient.get<PublicGIGCheckoutConfig>(api.gig.config);
+                const config = response.data;
+
+                if (!config || !Array.isArray(config.enabledDeliveryMethods)) {
+                    return;
+                }
+
+                const methods: Array<'pickup' | 'normal' | 'gig'> = [];
+
+                if (config.enabledDeliveryMethods.includes('pickup')) {
+                    methods.push('pickup');
+                }
+                if (config.enabledDeliveryMethods.includes('shipping')) {
+                    methods.push('normal');
+                }
+                if (config.enabledDeliveryMethods.includes('gig')) {
+                    methods.push('gig');
+                }
+
+                const normalizedMethods: Array<'pickup' | 'normal' | 'gig'> =
+                    methods.length > 0 ? methods : ['pickup'];
+
+                if (!isCancelled) {
+                    setAvailableShippingMethods(normalizedMethods);
+                    if (config.shippingWindow?.label) {
+                        setShippingEtaLabel(config.shippingWindow.label);
+                    }
+                }
+            } catch {
+                if (!isCancelled) {
+                    setAvailableShippingMethods(['pickup', 'normal', 'gig']);
+                    setShippingEtaLabel('2 - 5 days');
+                }
+            }
+        };
+
+        loadDeliveryConfig();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, []);
+
+    React.useEffect(() => {
+        if (shippingMethod === 'express' && availableShippingMethods.includes('normal')) {
+            setCurrentShippingMethod('normal');
+            setCheckoutShippingMethod('normal');
+            return;
+        }
+
+        if (isMethodAvailable(shippingMethod)) {
+            return;
+        }
+
+        const fallbackMethod = availableShippingMethods[0] || 'pickup';
+        setCurrentShippingMethod(fallbackMethod);
+        setCheckoutShippingMethod(fallbackMethod);
+    }, [availableShippingMethods, shippingMethod, isMethodAvailable, setCheckoutShippingMethod]);
 
     const {
         items,
@@ -123,7 +214,7 @@ const Checkout = () => {
         clearCart
     } = useCart();
     const { openLoginModal } = useLoginModalStore();
-    
+
 
     // Session and address management
     const { data: session } = useSession();
@@ -291,6 +382,8 @@ const Checkout = () => {
             city: shouldClearLocation ? '' : address.city,
             streetAddress: address.address1,
             postalCode: address.zipCode,
+            latitude: address.latitude,
+            longitude: address.longitude,
         });
 
         setAddressValidationError(null);
@@ -352,6 +445,7 @@ const Checkout = () => {
     const [calculatedShippingCost, setCalculatedShippingCost] = useState<number | null>(null);
     const [isCalculatingShipping, setIsCalculatingShipping] = useState<boolean>(false);
     const [shippingCalculationError, setShippingCalculationError] = useState<string | null>(null);
+    const [isGeocodingAddress, setIsGeocodingAddress] = useState<boolean>(false);
     const [pendingCorrections, setPendingCorrections] = useState<CheckoutCorrectionPayload | null>(null);
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
     const [isSubmittingCheckout, setIsSubmittingCheckout] = useState<boolean>(false);
@@ -392,9 +486,9 @@ const Checkout = () => {
     }, [items]);
 
     const buildCheckoutPayload = useCallback((acceptChanges: boolean = false) => {
-        const deliveryType: 'shipping' | 'pickup' = shippingMethod === 'pickup' ? 'pickup' : 'shipping';
-        const shippingCostValue = deliveryType === 'shipping' ? calculatedShippingCost ?? 0 : 0;
-        const etaDays = deliveryType === 'shipping' ? selectedLocationMeta?.etaDays ?? 0 : 0;
+        const deliveryType: 'shipping' | 'pickup' | 'gig' = shippingMethod === 'pickup' ? 'pickup' : shippingMethod === 'gig' ? 'gig' : 'shipping';
+        const shippingCostValue = deliveryType === 'pickup' ? 0 : calculatedShippingCost ?? 0;
+        const etaDays = deliveryType === 'pickup' ? 0 : selectedLocationMeta?.etaDays ?? 0;
 
         return {
             items: items.map((item) => {
@@ -422,7 +516,7 @@ const Checkout = () => {
                 };
             }),
             shippingAddress:
-                deliveryType === 'shipping'
+                (deliveryType === 'shipping' || deliveryType === 'gig')
                     ? {
                         firstName: shippingForm.firstName,
                         lastName: shippingForm.lastName,
@@ -434,6 +528,8 @@ const Checkout = () => {
                         lga: shippingForm.lga,
                         address1: shippingForm.streetAddress,
                         zipCode: shippingForm.postalCode,
+                        latitude: shippingForm.latitude,
+                        longitude: shippingForm.longitude,
                     }
                     : undefined,
             paymentMethod: activePayment,
@@ -583,6 +679,8 @@ const Checkout = () => {
                 lga: shippingForm.lga,
                 country: shippingForm.country,
                 active: false,
+                latitude: shippingForm.latitude,
+                longitude: shippingForm.longitude,
             };
 
             try {
@@ -695,26 +793,26 @@ const Checkout = () => {
             }
         } catch (submitError) {
             let errorM: string;
-                if (axios.isAxiosError(submitError)) {
+            if (axios.isAxiosError(submitError)) {
                 errorM = submitError.response?.data?.message || submitError.message;
-                } else if (submitError instanceof Error) {
+            } else if (submitError instanceof Error) {
                 errorM = submitError.message;
-                } else {
+            } else {
                 errorM = "An unknown error occurred.";
+            }
+
+            if (errorM === 'No token provided') {
+                openLoginModal();
+            } else {
+
+                // Try to handle as correction error first
+                const isHandledAsCorrection = handleCheckoutCorrectionError(submitError);
+
+                if (!isHandledAsCorrection) {
+                    // Not a correction error - show generic error message
+                    setCheckoutError(handleApiError(submitError));
                 }
-
-                 if(errorM === 'No token provided'){
-                    openLoginModal()
-                 }else{
-
-                     // Try to handle as correction error first
-                     const isHandledAsCorrection = handleCheckoutCorrectionError(submitError);
-                     
-                     if (!isHandledAsCorrection) {
-                         // Not a correction error - show generic error message
-                         setCheckoutError(handleApiError(submitError));
-                        }
-                    }
+            }
         } finally {
             setIsSubmittingCheckout(false);
         }
@@ -773,6 +871,66 @@ const Checkout = () => {
         return isShippingFormComplete && calculatedShippingCost !== null && !isCalculatingShipping;
     }, [shippingMethod, isShippingFormComplete, calculatedShippingCost, isCalculatingShipping]);
 
+    // Geocode receiver address for GIG shipping (coordinates are mandatory)
+    React.useEffect(() => {
+        if (shippingMethod !== 'gig') return;
+        if (!shippingForm.streetAddress || !shippingForm.state) return;
+
+        let cancelled = false;
+
+        // Clear stale coordinates immediately so the shipping calc won't fire
+        // with old coords while a new geocoding request is in flight
+        setShippingForm((prev) => ({ ...prev, latitude: undefined, longitude: undefined }));
+        setAddressValidationError(null);
+        setIsGeocodingAddress(true);
+
+        const timer = setTimeout(async () => {
+            const addressParts = [
+                shippingForm.streetAddress,
+                shippingForm.lga,
+                shippingForm.city,
+                shippingForm.state,
+                'Nigeria',
+            ].filter(Boolean).join(', ');
+
+            try {
+                const resp = await fetch(
+                    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(addressParts)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+                );
+                const data = await resp.json();
+                if (cancelled) return;
+
+                if (data.status === 'OK' && data.results?.length > 0) {
+                    const { lat, lng } = data.results[0].geometry.location;
+                    setShippingForm((prev) => ({ ...prev, latitude: lat, longitude: lng }));
+                    setAddressValidationError(null);
+                } else {
+                    setShippingForm((prev) => ({ ...prev, latitude: undefined, longitude: undefined }));
+                    setAddressValidationError('Address not found. Please enter a valid address.');
+                }
+            } catch {
+                if (cancelled) return;
+                setShippingForm((prev) => ({ ...prev, latitude: undefined, longitude: undefined }));
+                setAddressValidationError('Could not validate address. Please check your connection.');
+            } finally {
+                if (!cancelled) setIsGeocodingAddress(false);
+            }
+        }, 500);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+            setIsGeocodingAddress(false);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        shippingMethod,
+        shippingForm.streetAddress,
+        shippingForm.city,
+        shippingForm.lga,
+        shippingForm.state,
+    ]);
+
     // Calculate shipping cost when form is complete
     React.useEffect(() => {
         let isCancelled = false;
@@ -791,6 +949,22 @@ const Checkout = () => {
                 setShippingCalculationError(null);
                 setCalculatedShippingCost(null);
                 return;
+            }
+
+            // GIG requires valid coordinates — they must come from geocoding
+            if (shippingMethod === 'gig') {
+                if (isGeocodingAddress) {
+                    // Geocoding still in progress, stand by
+                    setIsCalculatingShipping(false);
+                    setCalculatedShippingCost(null);
+                    return;
+                }
+                if (!shippingForm.latitude || !shippingForm.longitude) {
+                    setIsCalculatingShipping(false);
+                    setCalculatedShippingCost(null);
+                    // addressValidationError is already set by the geocoding effect
+                    return;
+                }
             }
 
             setIsCalculatingShipping(true);
@@ -845,6 +1019,7 @@ const Checkout = () => {
                             quantity: item.qty,
                         })),
                         destination: destinationPayload,
+                        itemsSubtotal: subtotal,
                     });
 
                     if (!response.data || typeof response.data.amount !== 'number') {
@@ -854,9 +1029,35 @@ const Checkout = () => {
                     return response.data.amount;
                 };
 
+                const fetchGIGQuote = async () => {
+                    const response = await apiClient.post<{ shippingCost: number; currency: string; }>(api.gig.calculateShipping, {
+                        items: items.map((item) => ({
+                            productId: item._id || item.id,
+                            quantity: item.qty,
+                            selectedAttributes: item.selectedAttributes,
+                        })),
+                        receiverAddress: shippingForm.streetAddress,
+                        receiverState: shippingForm.state,
+                        receiverCity: shippingForm.city || undefined,
+                        receiverLatitude: shippingForm.latitude,
+                        receiverLongitude: shippingForm.longitude,
+                        receiverName: `${shippingForm.firstName} ${shippingForm.lastName}`.trim(),
+                        receiverPhoneNumber: shippingForm.phoneNumber,
+                    });
+
+                    if (!response.data || typeof response.data.shippingCost !== 'number') {
+                        throw new Error('Invalid GIG shipping response');
+                    }
+
+                    return response.data.shippingCost;
+                };
+
                 let shippingCost: number | null = null;
 
-                if (!isGuest) {
+                if (shippingMethod === 'gig') {
+                    // GIG shipping: always call the GIG endpoint (requires auth)
+                    shippingCost = await fetchGIGQuote();
+                } else if (!isGuest) {
                     try {
                         shippingCost = await fetchAuthenticatedQuote();
                     } catch (error) {
@@ -909,6 +1110,14 @@ const Checkout = () => {
         shippingForm.state,
         shippingForm.city,
         shippingForm.lga,
+        shippingForm.latitude,
+        shippingForm.longitude,
+        shippingForm.streetAddress,
+        shippingForm.firstName,
+        shippingForm.lastName,
+        shippingForm.phoneNumber,
+        isGeocodingAddress,
+        subtotal,
     ]);
 
     const handlePayment = (item: string) => {
@@ -919,9 +1128,13 @@ const Checkout = () => {
         setShippingForm((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleChangeShippingMethod = (newMethod: 'pickup' | 'normal' | 'express') => {
+    const handleChangeShippingMethod = (newMethod: 'pickup' | 'normal' | 'express' | 'gig') => {
+        if (!isMethodAvailable(newMethod)) {
+            return;
+        }
 
         setCurrentShippingMethod(newMethod);
+        setCheckoutShippingMethod(newMethod);
         setCalculatedShippingCost(newMethod === 'pickup' ? 0 : null);
         setIsChangingShippingMethod(false);
         setIsShippingExpanded(newMethod !== 'pickup');
@@ -965,6 +1178,8 @@ const Checkout = () => {
 
                                 <ShippingMethodSelector
                                     currentMethod={shippingMethod}
+                                    availableMethods={availableShippingMethods}
+                                    shippingEtaLabel={shippingEtaLabel}
                                     isExpanded={isChangingShippingMethod}
                                     onToggle={() => setIsChangingShippingMethod(!isChangingShippingMethod)}
                                     onMethodChange={handleChangeShippingMethod}
@@ -1054,6 +1269,7 @@ const Checkout = () => {
                                     resolvedShippingCost={resolvedShippingCost}
                                     resolvedTotal={resolvedTotal}
                                     shippingMethod={shippingMethod}
+                                    shippingEtaLabel={shippingEtaLabel}
                                     isCalculatingShipping={isCalculatingShipping}
                                     shippingCalculationError={shippingCalculationError}
                                     pendingCorrections={pendingCorrections}

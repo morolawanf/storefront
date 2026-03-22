@@ -19,10 +19,12 @@ import { useValidateCoupon } from '@/hooks/useValidateCoupon';
 import type { Coupon } from '@/types/coupon';
 import { useCheckoutStore } from '@/store/useCheckoutStore';
 import { formatToNaira } from '@/utils/currencyFormatter';
+import { useFreeShippingThreshold } from '@/hooks/useFreeShippingThreshold';
 const Cart = () => {
     const [timeLeft, setTimeLeft] = useState(countdownTime());
     const router = useRouter();
     const { status } = useSession();
+    const { freeShippingThreshold } = useFreeShippingThreshold();
     const { openLoginModal } = useLoginModalStore();
     const { setShippingMethod: setCheckoutShippingMethod, setDiscountInfo } = useCheckoutStore();
     useEffect(() => {
@@ -35,7 +37,7 @@ const Cart = () => {
 
     const { items: cartItems, updateItem, removeItem, isGuest, refreshCart } = useCart();
     const [quantityMap, setQuantityMap] = useState<Record<string, number>>({});
-    const debouncedQuantities = useDebouncedValue(quantityMap, 400);
+    const debouncedQuantities = useDebouncedValue(quantityMap, 500);
 
     // Refresh cart data on mount to get latest pricing/sales info
     useEffect(() => {
@@ -84,7 +86,18 @@ const Cart = () => {
                 continue;
             }
 
-            const normalizedQty = Math.max(1, targetQty);
+            const legacyQuantity = Number(item.quantity ?? Number.NaN);
+            const availableStock =
+                Number.isFinite(item.stock) && item.stock > 0
+                    ? Number(item.stock)
+                    : Number.isFinite(legacyQuantity) && legacyQuantity > 0
+                        ? legacyQuantity
+                        : null;
+
+            let normalizedQty = Math.max(1, targetQty);
+            if (availableStock !== null) {
+                normalizedQty = Math.min(normalizedQty, availableStock);
+            }
 
             if (normalizedQty !== targetQty) {
                 setQuantityMap((prev) => {
@@ -110,6 +123,19 @@ const Cart = () => {
     const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
     const [couponError, setCouponError] = useState<string | null>(null);
     const [manualCouponCode, setManualCouponCode] = useState<string>('');
+
+    const freeShippingEnabled =
+        Number.isFinite(freeShippingThreshold) && freeShippingThreshold !== null;
+    const normalizedFreeShippingThreshold = freeShippingEnabled ? Number(freeShippingThreshold) : 0;
+    const freeShippingRemaining = freeShippingEnabled
+        ? Math.max(normalizedFreeShippingThreshold - totalCart, 0)
+        : 0;
+    const hasQualifiedForFreeShipping = freeShippingEnabled && freeShippingRemaining === 0;
+    const freeShippingProgress = freeShippingEnabled
+        ? normalizedFreeShippingThreshold > 0
+            ? Math.min((totalCart / normalizedFreeShippingThreshold) * 100, 100)
+            : 100
+        : 0;
 
     // Fetch cart coupons
     const { data: cartCoupons = [], isLoading: couponsLoading } = useCartCoupons();
@@ -282,10 +308,53 @@ const Cart = () => {
                     )}
 
                     {cartItems.length > 0 && (
-                        <div className="content-main flex justify-between max-xl:flex-col gap-y-8">
+                        <div className="content-main flex justify-between max-xl:flex-col gap-y-6">
                             <div className="xl:w-2/3 xl:pr-3 w-full">
+                                {freeShippingEnabled ? (
+                                    <div className="mb-3 px-1">
+                                        <div className="text-sm leading-tight text-black">
+                                            {hasQualifiedForFreeShipping ? (
+                                                <>
+                                                    You qualified for <span className="font-semibold text-green-600">free delivery</span>.
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="font-semibold text-green-600">{formatToNaira(freeShippingRemaining)}</span> away from free delivery
+                                                </>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-2 pr-5">
+                                            <div className="relative h-1 rounded-full bg-green-100">
+                                                <div
+                                                    className="h-full rounded-full bg-green-600 transition-all"
+                                                    style={{ width: `${freeShippingProgress}%` }}
+                                                />
+
+                                                <div
+                                                    className="absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
+                                                    style={{ left: `${freeShippingProgress}%` }}
+                                                >
+                                                    <span className="flex h-4 w-4 items-center justify-center rounded-full border border-white bg-green-600 text-white shadow-sm">
+                                                        <Icon.ShoppingCartSimple size={7} weight="bold" />
+                                                    </span>
+                                                </div>
+
+                                                <div className="absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-1/3">
+                                                    <span className="flex h-4 w-4 items-center justify-center rounded-full border border-green-600 bg-white text-green-600">
+                                                        <Icon.Truck size={7} weight="bold" />
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <br />
+                                            <br />
+                                        </div>
+                                    </div>
+                                ) : null}
+
                                 {/* Cart Items Summary Header */}
-                                <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center justify-between mb-3">
                                     <h2 className="heading5">Cart Items ({cartItems.length})</h2>
                                     <button
                                         onClick={() => cartItems.forEach(item => removeItem(item._id))}
@@ -314,7 +383,7 @@ const Cart = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="list-product-main w-full mt-3">
+                                        <div className="list-product-main w-full mt-2">
                                             {cartItems.map((item) => {
                                                 const itemId = item._id || item.id;
                                                 const currentQty = quantityMap[itemId] ?? item.qty;
@@ -342,7 +411,7 @@ const Cart = () => {
 
                                                 return (
                                                     <div
-                                                        className={`item flex mt-5 pb-5 border-b border-line w-full transition-colors rounded-lg md:p-4 ${isUnavailable ? 'bg-surface/50 opacity-80' : 'hover:bg-surface/50'
+                                                        className={`item flex mt-3 pb-3 border-b border-line w-full transition-colors rounded-lg md:p-3 ${isUnavailable ? 'bg-surface/50 opacity-80' : 'hover:bg-surface/50'
                                                             }`}
                                                         key={itemId}
                                                     >
@@ -480,11 +549,6 @@ const Cart = () => {
                                                         </div>
                                                         <div className="w-1/6 flex flex-col items-center justify-center">
                                                             <div className="text-title text-center font-bold">{formatToNaira(displayTotal)}</div>
-                                                            {currentQty > 1 && (
-                                                                <div className="text-xs text-secondary mt-1">
-                                                                    {formatToNaira(pricing.unitPrice)} × {currentQty}
-                                                                </div>
-                                                            )}
                                                         </div>
                                                         <div className="w-1/12 flex items-center justify-center">
                                                             <button
@@ -504,10 +568,10 @@ const Cart = () => {
                                     </div>
                                 </div>
                                 {/* Discount Code Section */}
-                                <div className="discount-section mt-7">
+                                <div className="discount-section mt-5">
                                     <div className="flex items-center gap-2 mb-4">
                                         <Icon.Tag className="text-xl" />
-                                        <h3 className="text-title font-semibold">Apply Discount Code</h3>
+                                        <h3 className="text-title font-semibold">Promo code</h3>
                                     </div>
                                     <div className="input-block discount-code w-full h-12">
                                         <form className='w-full h-full relative' onSubmit={handleApplyManualCoupon}>
@@ -515,7 +579,7 @@ const Cart = () => {
                                                 type="text"
                                                 value={manualCouponCode}
                                                 onChange={(e) => setManualCouponCode(e.target.value)}
-                                                placeholder='Enter discount code (e.g., NEWYEAR20)'
+                                                placeholder='Enter code'
                                                 className='w-full h-full bg-surface pl-4 pr-32 rounded-lg border border-line focus:border-black focus:outline-none transition-colors'
                                                 disabled={validateCouponMutation.isPending}
                                             />
@@ -638,8 +702,8 @@ const Cart = () => {
                             </div>
                             {/* Order Summary Sidebar */}
                             <div className="xl:w-1/3 xl:pl-12 w-full">
-                                <div className="checkout-block bg-surface p-6 rounded-2xl border border-line sticky top-24">
-                                    <div className="flex items-center gap-2 mb-6">
+                                <div className="checkout-block bg-surface p-5 rounded-2xl border border-line sticky top-24">
+                                    <div className="flex items-center gap-2 mb-5">
                                         <Icon.Receipt className="text-2xl" />
                                         <h3 className="heading5">Order Summary</h3>
                                     </div>
@@ -647,7 +711,7 @@ const Cart = () => {
                                     {/* Price Breakdown */}
                                     <div className="space-y-4">
                                         <div className="total-block flex justify-between items-center">
-                                            <div className="text-secondary">Subtotal ({cartItems.length} items)</div>
+                                            <div className="text-secondary">Subtotal</div>
                                             <div className="text-title font-semibold">{formatToNaira(totalCart)}</div>
                                         </div>
 
@@ -665,7 +729,7 @@ const Cart = () => {
                                             <div className="flex items-center justify-between mb-3">
                                                 <div className="flex items-center gap-1 text-secondary">
                                                     <Icon.Truck size={18} />
-                                                    <span>Shipping Method</span>
+                                                    <span>Delivery</span>
                                                 </div>
                                             </div>
                                             <div className="space-y-2">
@@ -680,7 +744,6 @@ const Cart = () => {
                                                         />
                                                         <div>
                                                             <div className="font-medium">Pickup</div>
-                                                            <div className="text-xs text-secondary mt-0.5">Pick up from store</div>
                                                         </div>
                                                     </div>
                                                     <div className="font-semibold">&#8358;0.00</div>
@@ -696,11 +759,14 @@ const Cart = () => {
                                                             className="w-4 h-4"
                                                         />
                                                         <div>
-                                                            <div className="font-medium">Normal Delivery</div>
-                                                            <div className="text-xs text-secondary mt-0.5">Calculated at checkout</div>
+                                                            <div className="font-medium">
+                                                                Delivery
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div className="font-semibold text-secondary text-sm">TBD</div>
+                                                    <div className={`font-semibold text-sm ${hasQualifiedForFreeShipping ? 'text-green-500' : 'text-secondary'}`}>
+                                                        {hasQualifiedForFreeShipping ? 'FREE' : 'TBD'}
+                                                    </div>
                                                 </label>
 
                                                 {/* <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${shippingMethod === 'express' ? 'border-black bg-black text-white' : 'border-line hover:border-gray-400'}`}>
@@ -727,12 +793,14 @@ const Cart = () => {
                                         {/* Grand Total */}
                                         <div className="border-t border-line pt-4">
                                             <div className="flex justify-between items-center">
-                                                <div className="heading5">Total</div>
-                                                <div className="heading4 text-red">{formatToNaira(totalCart - discountCart)}</div>
+                                                <div className="text-lg font-semibold">Total</div>
+                                                <div className="text-4xl font-extrabold text-black">{formatToNaira(totalCart - discountCart)}</div>
                                             </div>
                                             {(shippingMethod === 'normal' || shippingMethod === 'express') && (
                                                 <div className="text-xs text-secondary mt-2">
-                                                    + Shipping (calculated at checkout)
+                                                    {hasQualifiedForFreeShipping
+                                                        ? '+ Shipping (free at checkout)'
+                                                        : '+ Shipping (calculated at checkout)'}
                                                 </div>
                                             )}
                                         </div>
@@ -749,13 +817,13 @@ const Cart = () => {
                                     </div>
 
                                     {/* Checkout Button */}
-                                    <div className="block-button flex flex-col items-center gap-y-3 md:gap-y-4 mt-4 md:mt-6">
+                                    <div className="block-button flex flex-col items-center gap-y-3 md:gap-y-4 mt-4 md:mt-5">
                                         <button
                                             className="checkout-btn button-main text-center w-full py-3 md:py-4 font-semibold text-base md:text-lg transition-all hover:shadow-lg flex items-center justify-center gap-2"
                                             onClick={redirectToCheckout}
                                         >
                                             <Icon.ShoppingCartSimple size={20} />
-                                            Proceed To Checkout
+                                            Checkout
                                         </button>
                                         <Link className="text-button hover-underline text-secondary flex items-center gap-1" href={"/shop/breadcrumb1"}>
                                             <Icon.ArrowLeft size={16} />

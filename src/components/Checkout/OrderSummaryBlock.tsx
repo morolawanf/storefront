@@ -36,7 +36,7 @@ interface OrderSummaryBlockProps {
     onToggle: () => void;
 
     // Cart statistics
-    cartStats: { totalItems: number; uniqueProducts: number };
+    cartStats: { totalItems: number; uniqueProducts: number; };
 
     // Pricing
     resolvedSubtotal: number;
@@ -45,7 +45,8 @@ interface OrderSummaryBlockProps {
     resolvedTotal: number | null;
 
     // Shipping state
-    shippingMethod: 'pickup' | 'normal' | 'express';
+    shippingMethod: 'pickup' | 'normal' | 'express' | 'gig';
+    shippingEtaLabel: string;
     isCalculatingShipping: boolean;
     shippingCalculationError: string | null;
 
@@ -68,6 +69,7 @@ const OrderSummaryBlock: React.FC<OrderSummaryBlockProps> = ({
     resolvedShippingCost,
     resolvedTotal,
     shippingMethod,
+    shippingEtaLabel,
     isCalculatingShipping,
     shippingCalculationError,
     pendingCorrections,
@@ -167,6 +169,10 @@ const OrderSummaryBlock: React.FC<OrderSummaryBlockProps> = ({
                     </span>
                 </div>
 
+                {shippingMethod !== 'pickup' && (
+                    <div className="text-xs text-secondary -mt-1">Estimated delivery: {shippingEtaLabel}</div>
+                )}
+
                 {/* Shipping Calculation Error */}
                 {shippingCalculationError && (
                     <div className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
@@ -232,7 +238,7 @@ const OrderSummaryBlock: React.FC<OrderSummaryBlockProps> = ({
                             <Icon.Warning className="text-yellow-600 text-xl flex-shrink-0 mt-0.5" />
                             <div className="flex-1">
                                 <p className="font-semibold text-yellow-900 mb-1">Coupon Issue</p>
-                                {parsedCheckoutErrors.coupons.map((coupon: { code: string; reason: string }, idx: number) => (
+                                {parsedCheckoutErrors.coupons.map((coupon: { code: string; reason: string; }, idx: number) => (
                                     <p key={idx} className="text-yellow-700 text-xs">
                                         • {coupon.code}: {coupon.reason}
                                     </p>
